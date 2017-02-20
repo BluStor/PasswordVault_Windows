@@ -3,3 +3,7 @@
 ################################################################################
 
 /GateKeeperSDK/obj
+/GateKeeperSDK/bin
+/CGCardIntegrate/Properties/AssemblyInfo.cs
+/packages/System.Management.4.0.0
+/packages/32feet.NET.3.5.0.0
