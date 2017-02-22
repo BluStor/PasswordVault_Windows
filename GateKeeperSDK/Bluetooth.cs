@@ -11,9 +11,11 @@ namespace GateKeeperSDK
     public class Bluetooth : IDisposable
     {
         private const string DeviceClass = "1F00";
-        private BluetoothEndPoint localEndpoint;
+        private const int DeviceSearchTimeMilliseconds = 2000;
+        private BluetoothEndPoint _localEndpoint;
         private readonly BluetoothClient _localClient;
         private readonly List<BluetoothDeviceInfo> _deviceList;
+        private readonly List<BluetoothDeviceInfo> _allDeviceList;
         private readonly string _devicePassword;
 
         public BluetoothDeviceInfo Device { get; set; }
@@ -24,13 +26,38 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="mac">Adress for local bluetooth device</param>
         /// <param name="devicePassword">Device password</param>
-        public Bluetooth(string mac, string devicePassword)
+        public Bluetooth(string mac, string devicePassword, bool searchOnDeviceClass = true)
         {
             _devicePassword = devicePassword;
-            localEndpoint = new BluetoothEndPoint(BluetoothAddress.Parse(mac), BluetoothService.SerialPort);
-            _localClient = new BluetoothClient(localEndpoint);
-            var allDevices = _localClient.DiscoverDevices();
-            _deviceList = allDevices.Where(x => x.ClassOfDevice.ToString() == DeviceClass).ToList();
+            _localEndpoint = new BluetoothEndPoint(BluetoothAddress.Parse(mac), BluetoothService.SerialPort);
+            _localClient = new BluetoothClient(_localEndpoint);
+            _localClient.InquiryLength = TimeSpan.FromMilliseconds(DeviceSearchTimeMilliseconds);
+            _allDeviceList = _localClient.DiscoverDevices().ToList();
+            if (searchOnDeviceClass)
+            {
+                _deviceList = _allDeviceList.Where(x => x.ClassOfDevice.ToString() == DeviceClass).ToList();
+                CheckDeviceList();
+            }
+        }
+
+        /// <summary>
+        /// Initialize new instance of Bluetooth client
+        /// </summary>
+        /// <param name="mac">Adress for local bluetooth device</param>
+        /// <param name="devicePassword">Device password</param>
+        /// <param name="deviceName">Device name</param>
+        public Bluetooth(string mac, string devicePassword, string deviceName) : this(mac, devicePassword, false)
+        {
+            _deviceList = _allDeviceList.Where(x => x.DeviceName == deviceName).ToList();
+            CheckDeviceList();
+        }
+
+        /// <summary>
+        /// Checks if device search failed
+        /// </summary>
+        private void CheckDeviceList()
+        {
+            if (_deviceList == null || _deviceList.Count == 0) throw new Exception("Device search failed");
         }
 
         /// <summary>
@@ -44,7 +71,7 @@ namespace GateKeeperSDK
         /// <summary>
         /// Pair local bluetooth
         /// </summary>
-        /// <param name="pass"></param>
+        /// <param name="pass">Device password</param>
         public void Pair(string pass)
         {
             // get a list of all paired devices
@@ -81,7 +108,10 @@ namespace GateKeeperSDK
                     _localClient.BeginConnect(device.DeviceAddress, BluetoothService.SerialPort,
                         new AsyncCallback(Connect), device);
                 }
-                catch (Exception) { }
+                catch (Exception)
+                {
+                    continue;
+                }
 
                 Device = device;
             }
@@ -127,17 +157,22 @@ namespace GateKeeperSDK
             EnableSerialPort();
         }
 
+        public void RemoveDevice()
+        {
+            _deviceList.Remove(Device);
+        }
+
+        public void Dispose()
+        {
+            _localClient.Close();
+        }
+
         private void Connect(IAsyncResult result)
         {
             if (result.IsCompleted)
             {
                 // client is connected now
             }
-        }
-
-        public void Dispose()
-        {
-            _localClient.Close();
         }
     }
 }

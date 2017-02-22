@@ -176,7 +176,7 @@ namespace CGCardIntegrate
                 {
                     using (var response = card.FreeMemory())
                     {
-                        StatusUtil.Begin(response.readDataFile());
+                        StatusUtil.Begin(response.ReadDataFile());
                     }
                 }
                 //todo upload data

@@ -6,7 +6,7 @@ namespace GateKeeperSDK
     /// GKStringUtils is a functional, static class intended for common operations
     /// involving {@code String} objects.
     /// </summary>
-    public class GKStringUtils
+    public class GkStringUtils
     {
         /// <summary>
         /// Join an array of <seealso cref="string"/> objects with a <seealso cref="string"/> separator.

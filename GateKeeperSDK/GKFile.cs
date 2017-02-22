@@ -6,25 +6,25 @@ namespace GateKeeperSDK
     /// <summary>
     /// A GKFile represents a file or path on a GateKeeper Card.
     /// </summary>
-    public class GKFile
+    public class GkFile
     {
-        public static readonly string TAG = typeof(GKFile).FullName;
+        public static readonly string Tag = typeof(GkFile).FullName;
         /// <summary>
         /// The absolute path to the entry on the GateKeeper Card.
         /// </summary>
-        protected internal string mCardPath;
+        protected internal string MCardPath;
         /// <summary>
         /// The name of the file.
         /// </summary>
-        protected internal string mName;
+        protected internal string MName;
         /// <summary>
         /// The {@code Type} of the file.
         /// </summary>
-        protected internal GKFile.GKType mType;
+        protected internal GkFile.GkType MType;
         /// <summary>
         /// The size of the file.
         /// </summary>
-        private int mFileSize;
+        private readonly int _mFileSize;
 
         /// <summary>
         /// Create a {@code GKFile} with the given {@code name} and {@code type}.
@@ -32,10 +32,10 @@ namespace GateKeeperSDK
         /// <param name="name"> the {@code String} name of the file </param>
         /// <param name="type"> the {@code Type} of the file
         /// @since 0.5.0 </param>
-        public GKFile(string name, GKFile.GKType type)
+        public GkFile(string name, GkFile.GkType type)
         {
-            mName = name;
-            mType = type;
+            MName = name;
+            MType = type;
         }
 
         /// <summary>
@@ -45,11 +45,11 @@ namespace GateKeeperSDK
         /// <param name="type"> the {@code Type} of the file </param>
         /// <param name="fileSize"> the {@code int} size of the file in bytes
         /// @since 0.15.0 </param>
-        public GKFile(string name, GKFile.GKType type, int fileSize)
+        public GkFile(string name, GkFile.GkType type, int fileSize)
         {
-            mName = name;
-            mType = type;
-            mFileSize = fileSize;
+            MName = name;
+            MType = type;
+            _mFileSize = fileSize;
         }
 
         /// <summary>
@@ -61,11 +61,11 @@ namespace GateKeeperSDK
         {
             get
             {
-                return mName;
+                return MName;
             }
             set
             {
-                mName = value;
+                MName = value;
             }
         }
 
@@ -75,15 +75,15 @@ namespace GateKeeperSDK
         /// </summary>
         /// <returns> the type of the file
         /// @since 0.5.0 </returns>
-        public virtual GKFile.GKType Type
+        public virtual GkFile.GkType Type
         {
             get
             {
-                return mType;
+                return MType;
             }
             set
             {
-                mType = value;
+                MType = value;
             }
         }
 
@@ -94,13 +94,7 @@ namespace GateKeeperSDK
         /// <returns> {@code true} if the file refers to a directory on the GateKeeper Card or
         /// {@code false} if the file refers to a file entry.
         /// @since 0.5.0 </returns>
-        public virtual bool Directory
-        {
-            get
-            {
-                return mType == GKFile.GKType.DIRECTORY;
-            }
-        }
+        public virtual bool Directory => MType == GkFile.GkType.Directory;
 
         /// <summary>
         /// Retrieve the file system extension (when present) of the file.
@@ -112,11 +106,11 @@ namespace GateKeeperSDK
         {
             get
             {
-                if (mType == GKFile.GKType.DIRECTORY)
+                if (MType == GkFile.GkType.Directory)
                 {
                     return null;
                 }
-                string[] parts = mName.Split(new[] { '\\', '.' });
+                string[] parts = MName.Split(new[] { '\\', '.' });
                 string ext = (parts.Length > 1) ? parts[parts.Length - 1] : null;
                 return ext;
             }
@@ -132,16 +126,16 @@ namespace GateKeeperSDK
         {
             get
             {
-                if (mType == GKFile.GKType.DIRECTORY)
+                if (MType == GkFile.GkType.Directory)
                 {
                     return null;
                 }
-                int extensionIndex = mName.LastIndexOf(".", StringComparison.Ordinal);
+                int extensionIndex = MName.LastIndexOf(".", StringComparison.Ordinal);
                 if (extensionIndex == -1)
                 {
-                    extensionIndex = mName.Length;
+                    extensionIndex = MName.Length;
                 }
-                return mName.Substring(0, extensionIndex);
+                return MName.Substring(0, extensionIndex);
             }
         }
 
@@ -154,11 +148,11 @@ namespace GateKeeperSDK
         {
             get
             {
-                return mCardPath;
+                return MCardPath;
             }
             set
             {
-                mCardPath = value;
+                MCardPath = value;
             }
         }
 
@@ -169,9 +163,9 @@ namespace GateKeeperSDK
         /// <param name="parentPath"> the absolute {@code String} path to the parent of the file </param>
         /// <param name="fileName">   the {@code String} name of the file
         /// @since 0.5.0 </param>
-        public virtual void setCardPath(string parentPath, string fileName)
+        public virtual void SetCardPath(string parentPath, string fileName)
         {
-            CardPath = GKFileUtils.joinPath(parentPath, fileName);
+            CardPath = GkFileUtils.JoinPath(parentPath, fileName);
         }
 
         /// <summary>
@@ -188,7 +182,7 @@ namespace GateKeeperSDK
                     return null;
                 }
 
-                List<string> parts = GKFileUtils.parsePath(CardPath);
+                List<string> parts = GkFileUtils.ParsePath(CardPath);
                 if (parts.Count <= 1)
                 {
                     return null;
@@ -196,7 +190,7 @@ namespace GateKeeperSDK
 
                 int newSize = parts.Count - 1;
                 string[] parentParts = parts.GetRange(0, newSize).ToArray();
-                return "/" + GKFileUtils.joinPath(parentParts);
+                return "/" + GkFileUtils.JoinPath(parentParts);
             }
         }
 
@@ -205,21 +199,15 @@ namespace GateKeeperSDK
         /// </summary>
         /// <returns> the {@code int} value of the file size
         /// @since 0.15.0 </returns>
-        public virtual int FileSize
-        {
-            get
-            {
-                return mFileSize;
-            }
-        }
+        public virtual int FileSize => _mFileSize;
 
         /// <summary>
         /// The type of the entry on the GateKeeper Card.
         /// </summary>
-        public enum GKType
+        public enum GkType
         {
-            FILE,
-            DIRECTORY
+            File,
+            Directory
         }
     }
 }

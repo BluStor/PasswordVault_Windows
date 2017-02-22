@@ -3,7 +3,6 @@ using System;
 using System.IO;
 using System.IO.Ports;
 using System.Text;
-using System.Threading;
 
 namespace GateKeeperSDK
 {
@@ -14,20 +13,27 @@ namespace GateKeeperSDK
         private readonly string MKD = "MKD";
         private readonly string RETR = "RETR";
         private readonly string MLST = "MLST";
-        private bool _isActive = false;
+        private readonly string SRFT = "SRFT";
+        private readonly string DELE = "DELE";
+        private readonly string RMD = "RMD";
+        private readonly string _defaultPath = "/apps/vault/data/";
+        private readonly Bluetooth _bluetooth;
         private GkMultiplexer _mMultiplexer;
-        private Bluetooth _bluetooth;
         private SerialPort _serialPort;
-        private static readonly Guid BluetoothSppUuid = new Guid("00001101-0000-1000-8000-00805F9B34FB");
+        private bool _isActive;
+
 
         /// <summary>
         /// Initialize new instance of card class
         /// </summary>
         /// <param name="pass">Card password to pair</param>
-        public Card(string pass)
+        /// <param name="cardName">Card name</param>
+        public Card(string pass, string cardName = null)
         {
-            var t = BluetoothRadio.PrimaryRadio;
-            _bluetooth = new Bluetooth(BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), pass);
+            if (BluetoothRadio.PrimaryRadio == null) throw new Exception("Local bluetooth device is disconnected");
+            var mac = BluetoothRadio.PrimaryRadio.LocalAddress.ToString();
+            _bluetooth = cardName == null ? new Bluetooth(mac, pass) : new Bluetooth(mac, pass, cardName);
+            Connect();
         }
 
         /// <summary>
@@ -47,7 +53,27 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response FreeMemory()
         {
-            return Get(MLST, "/apps/vault/data");
+            return Get(MLST, "");
+        }
+
+        /// <summary>
+        /// Deletes file from the card
+        /// </summary>
+        /// <param name="cardPath">Card path</param>
+        /// <returns>Response from the card with status, message and data</returns>
+        public Response Delete(string cardPath)
+        {
+            return Call(DELE, cardPath);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="cardPath"></param>
+        /// <returns>Response from the card with status, message and data</returns>
+        public Response DeletePath(string cardPath)
+        {
+            return Call(RMD, cardPath);
         }
 
         /// <summary>
@@ -55,7 +81,7 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="cardPath">File path. For example: "profiles/John/avatar.png"</param>
         /// <returns>Response from the card with status, message and data</returns>
-        public Response Get(String cardPath)
+        public Response Get(string cardPath)
         {
             return Get(RETR, cardPath);
         }
@@ -65,7 +91,7 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="cardPath">Folder path to create. For example "pictures/animals/cats"</param>
         /// <returns>Response from the card with status, message and data</returns>
-        public Response CreatePath(String cardPath)
+        public Response CreatePath(string cardPath)
         {
             return Call(MKD, cardPath);
         }
@@ -76,27 +102,32 @@ namespace GateKeeperSDK
         /// <param name="cardPath">File name to store. For example: "profiles/John/avatar.png"</param>
         /// <param name="inputStream">File bytes to write</param>
         /// <returns>Response from the card with status, message and data</returns>
-        public Response Put(String cardPath, byte[] inputStream)
+        public Response Put(string cardPath, byte[] inputStream)
         {
             _isActive = true;
             try
             {
-                Connect();
                 SendCommand(STOR, cardPath);
-                Thread.Sleep(2000);
                 Response commandResponse = GetCommandResponse();
-                if (commandResponse.getStatus() != 150)
+                if (commandResponse.Status != 150)
                 {
                     return commandResponse;
                 }
-                Thread.Sleep(2000);
+
                 using (var stream = new MemoryStream(inputStream))
                 {
                     _mMultiplexer.WriteToDataChannel(stream);
                 }
 
                 Response dataResponse = GetCommandResponse();
-                return dataResponse;
+
+                if (dataResponse.Status != 226)
+                {
+                    return dataResponse;
+                }
+
+                Response result = Srft(cardPath);
+                return result;
             }
             catch (IOException e)
             {
@@ -106,8 +137,13 @@ namespace GateKeeperSDK
             finally
             {
                 _isActive = false;
-                _serialPort.Close();
             }
+        }
+
+        public Response Srft(string cardPath)
+        {
+            string timestamp = DateTime.Now.ToString("yyyyMMddhhmmss");
+            return Call(SRFT, cardPath, new[] { timestamp });
         }
 
         /// <summary>
@@ -135,6 +171,11 @@ namespace GateKeeperSDK
                     _serialPort.Open();
                     _mMultiplexer = new GkMultiplexer(_serialPort);
                 }
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                _bluetooth.RemoveDevice();
+                Connect();
             }
             catch (IOException e)
             {
@@ -189,14 +230,14 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="method">Method to call</param>
         /// <param name="cardPath">Path on the card</param>
+        /// <param name="arguments">Arguments for card command</param>
         /// <returns>Response from the card with status, message and data</returns>
-        private Response Call(String method, String cardPath)
+        private Response Call(string method, string cardPath, string[] arguments = default(string[]))
         {
             _isActive = true;
             try
             {
-                Connect();
-                SendCommand(method, cardPath);
+                SendCommand(method, cardPath, arguments);
                 Response commandResponse = GetCommandResponse();
                 return commandResponse;
             }
@@ -229,16 +270,15 @@ namespace GateKeeperSDK
         /// <param name="method">Method to call</param>
         /// <param name="cardPath">Path on the card</param>
         /// <returns>Response from the card with status, message and data</returns>
-        private Response Get(String method, String cardPath)
+        private Response Get(string method, string cardPath)
         {
             _isActive = true;
             try
             {
                 FileStream dataFile = CreateDataFile();
-                Connect();
                 SendCommand(method, cardPath);
                 Response commandResponse = GetCommandResponse();
-                if (commandResponse.getStatus() != 150)
+                if (commandResponse.Status != 150)
                 {
                     return commandResponse;
                 }
@@ -254,7 +294,6 @@ namespace GateKeeperSDK
             finally
             {
                 _isActive = false;
-                _serialPort.Close();
             }
         }
 
@@ -272,11 +311,12 @@ namespace GateKeeperSDK
         /// Sends command to the card
         /// </summary>
         /// <param name="method">Method to call</param>
-        /// <param name="argument">String argument</param>
-        private void SendCommand(String method, String argument)
+        /// <param name="cardPath">Card path</param>
+        /// <param name="arguments">String argument</param>
+        private void SendCommand(string method, string cardPath, string[] arguments = default(string[]))
         {
             CheckMultiplexer();
-            String cmd = BuildCommandString(method, new[] { argument });
+            string cmd = BuildCommandString(method, cardPath, arguments);
             byte[] bytes = GetCommandBytes(cmd);
             _mMultiplexer.WriteToCommandChannel(bytes);
         }
@@ -307,11 +347,15 @@ namespace GateKeeperSDK
         /// Builds command for card
         /// </summary>
         /// <param name="method">Method to call</param>
+        /// <param name="cardPath">Card path</param>
         /// <param name="arguments">Command arguments</param>
         /// <returns>Concatenated command string</returns>
-        private string BuildCommandString(string method, string[] arguments)
+        private string BuildCommandString(string method, string cardPath, string[] arguments)
         {
-            return $"{method} {GKStringUtils.Join(arguments, " ")}";
+            var argumentsString = arguments == null ? string.Empty : string.Join(" ", arguments);
+            return argumentsString.Length == 0
+                ? $"{method} {_defaultPath}{cardPath}"
+                : $"{method} {argumentsString} {_defaultPath}{cardPath}";
         }
 
         /// <summary>
@@ -331,7 +375,7 @@ namespace GateKeeperSDK
         /// <returns>Globulared path</returns>
         private string GlobularPath(string cardPath)
         {
-            if (cardPath.Equals("/"))
+            if (cardPath.Equals(""))
             {
                 cardPath += "*";
             }

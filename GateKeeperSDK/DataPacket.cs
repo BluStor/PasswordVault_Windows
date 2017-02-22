@@ -4,14 +4,14 @@ namespace GateKeeperSDK
 {
     public class DataPacket
     {
-        public const int HEADER_SIZE = 3;
-        public const int CHECKSUM_SIZE = 2;
+        public const int HeaderSize = 3;
+        public const int ChecksumSize = 2;
 
-        public const byte MOST_SIGNIFICANT_BIT = 0x00;
-        public const byte LEAST_SIGNIFICANT_BIT = 0x00;
+        public const byte MostSignificantBit = 0x00;
+        public const byte LeastSignificantBit = 0x00;
 
-        private byte[] mPayload;
-        private int mChannel;
+        private readonly byte[] _mPayload;
+        private readonly int _mChannel;
 
         /// <summary>
         /// Initialize new instance of DataPacket class
@@ -20,25 +20,13 @@ namespace GateKeeperSDK
         /// <param name="channel">Chanel value</param>
         public DataPacket(byte[] payload, int channel)
         {
-            mPayload = payload;
-            mChannel = channel;
+            _mPayload = payload;
+            _mChannel = channel;
         }
 
-        public virtual byte[] Payload
-        {
-            get
-            {
-                return mPayload;
-            }
-        }
+        public virtual byte[] Payload => _mPayload;
 
-        public virtual int Channel
-        {
-            get
-            {
-                return mChannel;
-            }
-        }
+        public virtual int Channel => _mChannel;
 
         public class Builder
         {
@@ -47,13 +35,13 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="inputStream">Serial port to read</param>
             /// <returns>DataPacket of the serial port response</returns>
-            public static DataPacket build(SerialPort inputStream)
+            public static DataPacket Build(SerialPort inputStream)
             {
-                byte[] header = readHeader(inputStream);
-                int packetSize = getPacketSize(header);
-                int channel = getPacketChannel(header);
-                byte[] payload = readPayload(inputStream, packetSize);
-                byte[] checksum = readChecksum(inputStream);
+                byte[] header = ReadHeader(inputStream);
+                int packetSize = GetPacketSize(header);
+                int channel = GetPacketChannel(header);
+                byte[] payload = ReadPayload(inputStream, packetSize);
+                byte[] checksum = ReadChecksum(inputStream);
 
                 return new DataPacket(payload, channel);
             }
@@ -64,12 +52,12 @@ namespace GateKeeperSDK
             /// <param name="data">Data to wrap</param>
             /// <param name="channel">Channel value</param>
             /// <returns>Packed bytes</returns>
-            public static byte[] toPacketBytes(byte[] data, int channel)
+            public static byte[] ToPacketBytes(byte[] data, int channel)
             {
                 int packetSize = data.Length + 5;
-                byte channelByte = getChannelByte(channel);
-                byte msb = getMSB(packetSize);
-                byte lsb = getLSB(packetSize);
+                byte channelByte = GetChannelByte(channel);
+                byte msb = GetMsb(packetSize);
+                byte lsb = GetLsb(packetSize);
 
                 byte[] packet = new byte[data.Length + 5];
                 packet[0] = channelByte;
@@ -80,8 +68,8 @@ namespace GateKeeperSDK
                     packet[i + 3] = data[i];
                 }
 
-                packet[packet.Length - 2] = DataPacket.MOST_SIGNIFICANT_BIT;
-                packet[packet.Length - 1] = DataPacket.LEAST_SIGNIFICANT_BIT;
+                packet[packet.Length - 2] = DataPacket.MostSignificantBit;
+                packet[packet.Length - 1] = DataPacket.LeastSignificantBit;
                 return packet;
             }
 
@@ -90,12 +78,12 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="header">Response header</param>
             /// <returns>Data size</returns>
-            internal static int getPacketSize(byte[] header)
+            internal static int GetPacketSize(byte[] header)
             {
-                byte packetSizeMSB = header[1];
-                byte packetSizeLSB = header[2];
-                int packetSize = (int)packetSizeMSB << 8;
-                packetSize += (int)packetSizeLSB & 0xFF;
+                byte packetSizeMsb = header[1];
+                byte packetSizeLsb = header[2];
+                int packetSize = (int)packetSizeMsb << 8;
+                packetSize += (int)packetSizeLsb & 0xFF;
                 return packetSize;
             }
 
@@ -104,7 +92,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="header">Response header</param>
             /// <returns>Packet channel</returns>
-            internal static int getPacketChannel(byte[] header)
+            internal static int GetPacketChannel(byte[] header)
             {
                 return (int)header[0];
             }
@@ -114,9 +102,9 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="inputStream">Serial port to read</param>
             /// <returns>Header from serial port</returns>
-            internal static byte[] readHeader(SerialPort inputStream)
+            internal static byte[] ReadHeader(SerialPort inputStream)
             {
-                return fillByteArrayFromStream(inputStream, DataPacket.HEADER_SIZE);
+                return FillByteArrayFromStream(inputStream, DataPacket.HeaderSize);
             }
 
             /// <summary>
@@ -125,10 +113,10 @@ namespace GateKeeperSDK
             /// <param name="inputStream">Serial port to read</param>
             /// <param name="packetSize">Size of the packet</param>
             /// <returns>Byte array with data</returns>
-            internal static byte[] readPayload(SerialPort inputStream, int packetSize)
+            internal static byte[] ReadPayload(SerialPort inputStream, int packetSize)
             {
-                int payloadsize = packetSize - (DataPacket.HEADER_SIZE + DataPacket.CHECKSUM_SIZE);
-                return fillByteArrayFromStream(inputStream, payloadsize);
+                int payloadsize = packetSize - (DataPacket.HeaderSize + DataPacket.ChecksumSize);
+                return FillByteArrayFromStream(inputStream, payloadsize);
             }
 
             /// <summary>
@@ -136,9 +124,9 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="inputStream">Serial port to read</param>
             /// <returns>Checksum array</returns>
-            internal static byte[] readChecksum(SerialPort inputStream)
+            internal static byte[] ReadChecksum(SerialPort inputStream)
             {
-                return fillByteArrayFromStream(inputStream, DataPacket.CHECKSUM_SIZE);
+                return FillByteArrayFromStream(inputStream, DataPacket.ChecksumSize);
             }
 
             /// <summary>
@@ -147,7 +135,7 @@ namespace GateKeeperSDK
             /// <param name="inputStream">Serial port to read</param>
             /// <param name="length">Byte array length</param>
             /// <returns>Byte array for response</returns>
-            internal static byte[] fillByteArrayFromStream(SerialPort inputStream, int length)
+            internal static byte[] FillByteArrayFromStream(SerialPort inputStream, int length)
             {
                 byte[] data = new byte[length];
                 int totalBytesRead = 0;
@@ -168,7 +156,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="channel">Number of channel</param>
             /// <returns></returns>
-            internal static byte getChannelByte(int channel)
+            internal static byte GetChannelByte(int channel)
             {
                 return (byte)(channel & 0xff);
             }
@@ -178,7 +166,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="size">Size</param>
             /// <returns>Most significant bit</returns>
-            internal static byte getMSB(int size)
+            internal static byte GetMsb(int size)
             {
                 return (byte)(size >> 8);
             }
@@ -188,7 +176,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="size">Size</param>
             /// <returns>Least significant bit</returns>
-            internal static byte getLSB(int size)
+            internal static byte GetLsb(int size)
             {
                 return (byte)(size & 0xff);
             }

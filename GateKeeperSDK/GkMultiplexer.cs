@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace GateKeeperSDK
 {
@@ -79,7 +75,7 @@ namespace GateKeeperSDK
                     counter += 1;
                     if (bytesRead < buffer.Length)
                     {
-                        WriteToDataChannel(Arrays.copyOf(buffer, bytesRead));
+                        WriteToDataChannel(Arrays.CopyOf(buffer, bytesRead));
                     }
                     else
                     {
@@ -100,7 +96,7 @@ namespace GateKeeperSDK
         /// <returns>Byte array from command channel</returns>
         public virtual byte[] ReadCommandChannelLine()
         {
-            DataPacket packet = DataPacket.Builder.build(_serialPort);
+            DataPacket packet = DataPacket.Builder.Build(_serialPort);
             return ReadCommandLine(packet);
         }
 
@@ -115,7 +111,7 @@ namespace GateKeeperSDK
         {
             try
             {
-                DataPacket packet = DataPacket.Builder.build(_serialPort);
+                DataPacket packet = DataPacket.Builder.Build(_serialPort);
 
                 _currentDataTransferFileSize = 0;
                 int COUNTER = 0;
@@ -125,7 +121,7 @@ namespace GateKeeperSDK
                     COUNTER += 1;
                     _currentDataTransferFileSize += payload.Length;
                     dataFile.Write(payload, 0, payload.Length);
-                    packet = DataPacket.Builder.build(_serialPort);
+                    packet = DataPacket.Builder.Build(_serialPort);
                 }
 
                 return ReadCommandLine(packet);
@@ -166,7 +162,7 @@ namespace GateKeeperSDK
             while (!ContainsCrlf(packet.Payload))
             {
                 CopyUntilCrlf(packet.Payload, bytes);
-                packet = DataPacket.Builder.build(_serialPort);
+                packet = DataPacket.Builder.Build(_serialPort);
             }
             CopyUntilCrlf(packet.Payload, bytes);
             return bytes.ToArray();
@@ -216,7 +212,7 @@ namespace GateKeeperSDK
         /// <param name="channel">Channel to which data will be written</param>
         private void Write(byte[] data, int channel)
         {
-            byte[] packetBytes = DataPacket.Builder.toPacketBytes(data, channel);
+            byte[] packetBytes = DataPacket.Builder.ToPacketBytes(data, channel);
             _serialPort.Write(packetBytes, 0, packetBytes.Length);
         }
     }

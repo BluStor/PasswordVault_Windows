@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GateKeeperSDK
 {
@@ -13,7 +10,7 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="hex">Hex string to encode</param>
         /// <returns>Byte array representation of hex string</returns>
-        public static byte[] hexStringToByteArray(string hex)
+        public static byte[] HexStringToByteArray(string hex)
         {
             return Enumerable.Range(0, hex.Length)
                              .Where(x => x % 2 == 0)
@@ -26,7 +23,7 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="obj">Byte array to encode</param>
         /// <returns>String representation of byte array</returns>
-        public static string asString(this byte[] obj)
+        public static string AsString(this byte[] obj)
         {
             return obj.Aggregate(string.Empty, (current, b) => current + (b + " "));
         }
@@ -40,7 +37,7 @@ namespace GateKeeperSDK
         /// <param name="originalBytes">Byte array to copy</param>
         /// <param name="newLength">New length</param>
         /// <returns>New byte array with new length</returns>
-        public static byte[] copyOf(byte[] originalBytes, int newLength)
+        public static byte[] CopyOf(byte[] originalBytes, int newLength)
         {
             var result = new byte[newLength];
             for (int i = 0; i < newLength; i++)
