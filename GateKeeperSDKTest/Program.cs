@@ -23,7 +23,7 @@ namespace GateKeeperSDKTest
                     var input = Console.ReadLine();
                     if (input == "help")
                     {
-                        Console.WriteLine(cardTest.MethodList());
+                        Console.WriteLine(cardTest.Help());
                         continue;
                     }
 
@@ -47,6 +47,7 @@ namespace GateKeeperSDKTest
                     if (result != null)
                     {
                         var response = result as Response;
+
                         Console.WriteLine("Response:");
                         Console.WriteLine(response?.ToString() ?? result.ToString());
                     }

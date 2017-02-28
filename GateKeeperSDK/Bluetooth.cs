@@ -11,7 +11,7 @@ namespace GateKeeperSDK
     public class Bluetooth : IDisposable
     {
         private const string DeviceClass = "1F00";
-        private const int DeviceSearchTimeMilliseconds = 2000;
+        private const int DeviceSearchTimeMilliseconds = 7000;
         private BluetoothEndPoint _localEndpoint;
         private readonly BluetoothClient _localClient;
         private readonly List<BluetoothDeviceInfo> _deviceList;

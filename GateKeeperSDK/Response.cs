@@ -159,7 +159,15 @@ namespace GateKeeperSDK
 
         public override string ToString()
         {
-            return $"Status: {Status}\nMessage: {Message}\nData file:\n{ReadDataFile()}";
+            long length = 0;
+            string file = string.Empty;
+            try
+            {
+                length = DataFile?.Length ?? 0;
+                file = ReadDataFile();
+            }
+            catch (Exception){}
+            return $"Status: {Status}\nMessage: {Message}\nData file: {length} bytes\n{file}";
         }
     }
 }

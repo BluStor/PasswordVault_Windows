@@ -75,7 +75,7 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response ChangeWorkingDirectory(string cardPath)
         {
-            return Call(Commands.CWD, cardPath, null, false);
+            return Call(Commands.CWD, cardPath, null, true);
         }
 
         /// <summary>

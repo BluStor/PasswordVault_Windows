@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using GateKeeperSDK;
+using GateKeeperSDKTest;
 
 namespace ConsoleTest
 {
@@ -15,36 +18,56 @@ namespace ConsoleTest
             Card = card;
         }
 
-        private Response UploadFile(string fileName)
-        {
-            try
-            {
-                var buffer = new byte[256];
-                new Random().NextBytes(buffer);
-                Response = Card.Put(fileName, buffer);
-            }
-            catch (Exception e)
-            {
-                Response = new Response(550, e.Message);
-            }
-
-            return Response;
-        }
-
-
         public object ExecuteMethod(string[] inputArray)
         {
             try
             {
-                if (inputArray[0] == "Put")
+                switch (inputArray[0].ToLower())
                 {
-                    return UploadFile(inputArray[1]);
+                    case "list":
+                        return Card.List(inputArray[1]);
+                    case "changeworkingdirectory":
+                        return Card.ChangeWorkingDirectory(inputArray[1]);
+                    case "currentworkingdirectory":
+                        return Card.CurrentWorkingDirectory();
+                    case "put":
+                        {
+                            var bytes = File.ReadAllBytes(inputArray[2]);
+                            return Card.Put(inputArray[1], bytes);
+                        }
+                    case "get":
+                        {
+                            var result = Card.Get(inputArray[1]);
+
+                            if (inputArray.Length == 3)
+                            {
+                                if (result.DataFile != null)
+                                {
+
+                                    result.DataFile.Position = 0;
+                                    using (var ms = new BinaryReader(result.DataFile))
+                                    {
+                                        File.WriteAllBytes(inputArray[2], ms.ReadBytes((int)result.DataFile.Length));
+                                    }
+                                }
+                            }
+
+                            return result;
+
+                        }
+                    case "freememory":
+                        return Card.FreeMemory();
+                    case "rename":
+                        return Card.Rename(inputArray[1], inputArray[2]);
+                    case "delete":
+                        return Card.Delete(inputArray[1]);
+                    case "createpath":
+                        return Card.CreatePath(inputArray[1]);
+                    case "deletepath":
+                        return Card.DeletePath(inputArray[1]);
+                    default: 
+                        throw new Exception("There are no such method. \nType 'help' to see all commands.");
                 }
-                var method = Card.GetType().GetMethod(inputArray[0]);
-                var parameters = inputArray.Select(x => (object) x).ToList();
-                parameters.Remove(parameters[0]);
-                var result = method.Invoke(Card, parameters.ToArray());
-                return result;
             }
             catch (Exception e)
             {
@@ -53,17 +76,52 @@ namespace ConsoleTest
             }
         }
 
+        public string Help()
+        {
+            return
+                @"
+    List: Files and Directories
+    Example: List /data
+
+    ChangeWorkingDirectory: Set working directory
+    Example: ChangeWorkingDirectory /data/test_folder
+
+    CurrentWorkingDirectory: Get working directory
+    Example: CurrentWorkingDirectory
+
+    Put: Copy files to card
+    Example: Put /data/test.txt C:/Users/User/GateKeeperSDKTest/test.txt
+
+    Get: Download a file
+    Example: Get /data/test.txt C:/Users/User/GateKeeperSDKTest/test.txt
+
+    FreeMemory: Get free memory value on the card
+    Example: FreeMemory
+
+    Rename: Rename file
+    Example: Rename /data/test.txt /data/temp123.txt
+
+    Delete: Delete File
+    Example: Delete /data/test.txt
+
+    CreatePath: Make a directory
+    Example: CreatePath /data/test_folder
+
+    DeletePath: Delete Folder
+    Example: DeletePath /data/test_folder";
+        }
+
         public string MethodList()
         {
             var result = new List<string>();
             var methods = Card.GetType().GetMethods();
-            var objectMethods = typeof (object).GetMethods().Select(x => x.Name).Concat(typeof (IDisposable).GetMethods().Select(x => x.Name));
+            var objectMethods = typeof(object).GetMethods().Select(x => x.Name).Concat(typeof(IDisposable).GetMethods().Select(x => x.Name));
             foreach (var methodInfo in methods.Where(x => x.IsPublic && !objectMethods.Contains(x.Name) && !x.Name.Contains("get_")))
             {
                 string mI = $"{methodInfo.Name} (";
                 var parameters = methodInfo.GetParameters().Aggregate("", (current, parameterInfo) => current + $"{parameterInfo.ParameterType.Name} {parameterInfo.Name}, ");
                 mI += parameters;
-                if(parameters.Length > 0) mI = mI.Remove(mI.Length - 2);
+                if (parameters.Length > 0) mI = mI.Remove(mI.Length - 2);
                 mI += ")";
                 result.Add(mI);
             }
