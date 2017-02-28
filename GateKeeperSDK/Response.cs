@@ -156,5 +156,10 @@ namespace GateKeeperSDK
         {
             MDataFile.Dispose();
         }
+
+        public override string ToString()
+        {
+            return $"Status: {Status}\nMessage: {Message}\nData file:\n{ReadDataFile()}";
+        }
     }
 }

@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="Bluetooth.cs" />
     <Compile Include="Card.cs" />
+    <Compile Include="Commands.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DataPacket.cs" />
     <Compile Include="GKFile.cs" />

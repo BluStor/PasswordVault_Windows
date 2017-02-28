@@ -48,16 +48,16 @@ namespace GateKeeperSDK
         /// <param name="deviceName">Device name</param>
         public Bluetooth(string mac, string devicePassword, string deviceName) : this(mac, devicePassword, false)
         {
-            _deviceList = _allDeviceList.Where(x => x.DeviceName == deviceName).ToList();
+            _deviceList = _allDeviceList.Where(x => x.DeviceName.ToLower() == deviceName.ToLower()).ToList();
             CheckDeviceList();
         }
 
         /// <summary>
         /// Checks if device search failed
         /// </summary>
-        private void CheckDeviceList()
+        public void CheckDeviceList()
         {
-            if (_deviceList == null || _deviceList.Count == 0) throw new Exception("Device search failed");
+            if (_deviceList == null || _deviceList.Count == 0) throw new NullReferenceException("Device search failed");
         }
 
         /// <summary>

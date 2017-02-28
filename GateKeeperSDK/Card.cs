@@ -8,19 +8,18 @@ namespace GateKeeperSDK
 {
     public class Card : IDisposable
     {
-        private readonly string LIST = "LIST";
-        private readonly string STOR = "STOR";
-        private readonly string MKD = "MKD";
-        private readonly string RETR = "RETR";
-        private readonly string MLST = "MLST";
-        private readonly string SRFT = "SRFT";
-        private readonly string DELE = "DELE";
-        private readonly string RMD = "RMD";
-        private readonly string _defaultPath = "/apps/vault/data/";
-        private readonly Bluetooth _bluetooth;
+        private readonly string _pass;
+        private readonly string _mac;
+        private readonly string _cardName;
+        private readonly string _defaultPath = "/apps/vault/data";
+        private Bluetooth _bluetooth;
         private GkMultiplexer _mMultiplexer;
         private SerialPort _serialPort;
         private bool _isActive;
+
+        public string BluetoothName => _bluetooth?.Device?.DeviceName;
+        public string Mac => _mac;
+        public bool IsAvailableSerial => _serialPort != null && _serialPort.IsOpen;
 
 
         /// <summary>
@@ -28,12 +27,26 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="pass">Card password to pair</param>
         /// <param name="cardName">Card name</param>
-        public Card(string pass, string cardName = null)
+        /// <param name="mac">Local bluetooth device mac adress</param>
+        /// <param name="establishConnection">If true, bluetooth connection will be established</param>
+        public Card(string pass, string cardName = null, string mac = null, bool establishConnection = true)
         {
-            if (BluetoothRadio.PrimaryRadio == null) throw new Exception("Local bluetooth device is disconnected");
-            var mac = BluetoothRadio.PrimaryRadio.LocalAddress.ToString();
-            _bluetooth = cardName == null ? new Bluetooth(mac, pass) : new Bluetooth(mac, pass, cardName);
-            Connect();
+            _pass = pass;
+            _mac = mac;
+            _cardName = cardName;
+            if(establishConnection) BuildConnection();
+        }
+
+        /// <summary>
+        /// Builds connection for bluetooth
+        /// </summary>
+        public void BuildConnection()
+        {
+            if (!IsAvailableSerial)
+            {
+                _bluetooth = _cardName == null ? new Bluetooth(_mac, _pass) : new Bluetooth(_mac, _pass, _cardName);
+                Connect();
+            }
         }
 
         /// <summary>
@@ -44,7 +57,25 @@ namespace GateKeeperSDK
         public Response List(string cardPath)
         {
             cardPath = GlobularPath(cardPath);
-            return Get(LIST, cardPath);
+            return Get(Commands.LIST, cardPath, null, false);
+        }
+
+        /// <summary>
+        /// Gets current working directory
+        /// </summary>
+        /// <returns>Response from the card with status, message and data</returns>
+        public Response CurrentWorkingDirectory()
+        {
+            return Call(Commands.PWD, string.Empty, null, false);
+        }
+
+        /// <summary>
+        /// Gets current working directory
+        /// </summary>
+        /// <returns>Response from the card with status, message and data</returns>
+        public Response ChangeWorkingDirectory(string cardPath)
+        {
+            return Call(Commands.CWD, cardPath, null, false);
         }
 
         /// <summary>
@@ -53,7 +84,22 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response FreeMemory()
         {
-            return Get(MLST, "");
+            return Get(Commands.MLST, "", null, true);
+        }
+
+        public Response Rename(string source, string target)
+        {
+            _isActive = true;
+
+            var result = Call(Commands.RNFR, source, null, false);
+            if (result.Status == 350)
+            {
+                result = Call(Commands.RNTO, target, null, false);
+            }
+
+            _isActive = false;
+
+            return result;
         }
 
         /// <summary>
@@ -63,7 +109,7 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response Delete(string cardPath)
         {
-            return Call(DELE, cardPath);
+            return Call(Commands.DELE, cardPath, null, false);
         }
 
         /// <summary>
@@ -73,7 +119,7 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response DeletePath(string cardPath)
         {
-            return Call(RMD, cardPath);
+            return Call(Commands.RMD, cardPath, null, false);
         }
 
         /// <summary>
@@ -83,7 +129,7 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response Get(string cardPath)
         {
-            return Get(RETR, cardPath);
+            return Get(Commands.RETR, cardPath, null, false);
         }
 
         /// <summary>
@@ -93,7 +139,7 @@ namespace GateKeeperSDK
         /// <returns>Response from the card with status, message and data</returns>
         public Response CreatePath(string cardPath)
         {
-            return Call(MKD, cardPath);
+            return Call(Commands.MKD, cardPath, null, false);
         }
 
         /// <summary>
@@ -107,7 +153,7 @@ namespace GateKeeperSDK
             _isActive = true;
             try
             {
-                SendCommand(STOR, cardPath);
+                SendCommand(Commands.STOR, cardPath, null, false);
                 Response commandResponse = GetCommandResponse();
                 if (commandResponse.Status != 150)
                 {
@@ -143,7 +189,7 @@ namespace GateKeeperSDK
         public Response Srft(string cardPath)
         {
             string timestamp = DateTime.Now.ToString("yyyyMMddhhmmss");
-            return Call(SRFT, cardPath, new[] { timestamp });
+            return Call(Commands.SRFT, cardPath, new[] { timestamp }, false);
         }
 
         /// <summary>
@@ -175,7 +221,15 @@ namespace GateKeeperSDK
             catch (UnauthorizedAccessException e)
             {
                 _bluetooth.RemoveDevice();
-                Connect();
+                try
+                {
+                    _bluetooth.CheckDeviceList();
+                    Connect();
+                }
+                catch (NullReferenceException ex)
+                {
+                    throw new Exception(ex.Message, e);
+                }
             }
             catch (IOException e)
             {
@@ -200,9 +254,13 @@ namespace GateKeeperSDK
                     _mMultiplexer = null;
                 }
             }
-            if (_bluetooth.Client.Connected)
+            if (_bluetooth != null && _bluetooth.Client != null && _bluetooth.Client.Connected)
             {
                 _bluetooth.Client.Close();
+            }
+            if (_serialPort != null && _serialPort.IsOpen)
+            {
+                _serialPort.Close();
             }
         }
 
@@ -215,29 +273,20 @@ namespace GateKeeperSDK
             _serialPort.Dispose();
         }
 
-
-        /// <summary>
-        /// Checks if card is disconnected
-        /// </summary>
-        /// <returns>True, if card is disconnected</returns>
-        private bool IsDisconnected()
-        {
-            return _mMultiplexer == null || _bluetooth == null || _bluetooth.Client == null || !_bluetooth.Client.Connected;
-        }
-
         /// <summary>
         /// Executes command for the card
         /// </summary>
         /// <param name="method">Method to call</param>
         /// <param name="cardPath">Path on the card</param>
         /// <param name="arguments">Arguments for card command</param>
+        /// <param name="needsTransform">If true, card path will be complemented with default path</param>
         /// <returns>Response from the card with status, message and data</returns>
-        private Response Call(string method, string cardPath, string[] arguments = default(string[]))
+        private Response Call(string method, string cardPath, string[] arguments = default(string[]), bool needsTransform = true)
         {
             _isActive = true;
             try
             {
-                SendCommand(method, cardPath, arguments);
+                SendCommand(method, cardPath, arguments, needsTransform);
                 Response commandResponse = GetCommandResponse();
                 return commandResponse;
             }
@@ -269,14 +318,16 @@ namespace GateKeeperSDK
         /// </summary>
         /// <param name="method">Method to call</param>
         /// <param name="cardPath">Path on the card</param>
+        /// <param name="arguments">Arguments for card command</param>
+        /// <param name="needsTransform">If true, card path will be complemented with default path</param>
         /// <returns>Response from the card with status, message and data</returns>
-        private Response Get(string method, string cardPath)
+        private Response Get(string method, string cardPath, string[] arguments = default(string[]), bool needsTransform = true)
         {
             _isActive = true;
             try
             {
                 FileStream dataFile = CreateDataFile();
-                SendCommand(method, cardPath);
+                SendCommand(method, cardPath, arguments, needsTransform);
                 Response commandResponse = GetCommandResponse();
                 if (commandResponse.Status != 150)
                 {
@@ -313,10 +364,11 @@ namespace GateKeeperSDK
         /// <param name="method">Method to call</param>
         /// <param name="cardPath">Card path</param>
         /// <param name="arguments">String argument</param>
-        private void SendCommand(string method, string cardPath, string[] arguments = default(string[]))
+        /// <param name="needsTransform">If true, card path will be complemented with default path</param>
+        private void SendCommand(string method, string cardPath, string[] arguments = default(string[]), bool needsTransform = true)
         {
             CheckMultiplexer();
-            string cmd = BuildCommandString(method, cardPath, arguments);
+            string cmd = BuildCommandString(method, cardPath, arguments, needsTransform);
             byte[] bytes = GetCommandBytes(cmd);
             _mMultiplexer.WriteToCommandChannel(bytes);
         }
@@ -344,18 +396,42 @@ namespace GateKeeperSDK
         }
 
         /// <summary>
+        /// Checks if card is disconnected
+        /// </summary>
+        /// <returns>True, if card is disconnected</returns>
+        private bool IsDisconnected()
+        {
+            return _mMultiplexer == null || _bluetooth?.Client == null || !_bluetooth.Client.Connected;
+        }
+
+        /// <summary>
         /// Builds command for card
         /// </summary>
         /// <param name="method">Method to call</param>
         /// <param name="cardPath">Card path</param>
         /// <param name="arguments">Command arguments</param>
+        /// <param name="needsTransform">If true, card path will be complemented with default path</param>
         /// <returns>Concatenated command string</returns>
-        private string BuildCommandString(string method, string cardPath, string[] arguments)
+        private string BuildCommandString(string method, string cardPath, string[] arguments, bool needsTransform = true)
         {
             var argumentsString = arguments == null ? string.Empty : string.Join(" ", arguments);
-            return argumentsString.Length == 0
-                ? $"{method} {_defaultPath}{cardPath}"
-                : $"{method} {argumentsString} {_defaultPath}{cardPath}";
+            if (argumentsString.Length == 0)
+            {
+                if (needsTransform)
+                {
+                    return $"{method} {_defaultPath}{cardPath}";
+                }
+
+                return $"{method} {cardPath}";
+            }
+            else
+            {
+                if (needsTransform)
+                {
+                    return $"{method} {argumentsString} {_defaultPath}{cardPath}";
+                }
+                return $"{method} {argumentsString} {cardPath}";
+            }
         }
 
         /// <summary>
