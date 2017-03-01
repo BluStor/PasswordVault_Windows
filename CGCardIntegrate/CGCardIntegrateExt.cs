@@ -1,24 +1,37 @@
-﻿using KeePass.Plugins;
+﻿using System;
+using GateKeeperSDK;
+using InTheHand.Net.Bluetooth;
+using KeePass.Plugins;
 
 namespace CGCardIntegrate
 {
     public sealed class CGCardIntegrateExt : Plugin
     {
-        private static IPluginHost m_host = null;
-        internal static IPluginHost Host { get { return m_host; } }
+        private static IPluginHost _host = null;
+        private static Card _card;
+        internal static IPluginHost Host { get { return _host; } }
+
+        public static Card Card
+        {
+            get { return _card; }
+            set { _card = value; }
+        }
+
         public override bool Initialize(IPluginHost host)
         {
-            if (m_host != null) Terminate();
-            m_host = host;
+            if (_host != null) Terminate();
+            _host = host;
             (new CyberGateWebRequestCreator()).Register();
             return true;
         }
 
         public override void Terminate()
         {
-            if (m_host != null)
+            if (_host != null)
             {
-                m_host = null;
+                _host = null;
+                Card.Disconnect();
+                Card = null;
             }
         }
     }

@@ -1,5 +1,4 @@
-﻿using GateKeeperSDK;
-using KeePassLib.Serialization;
+﻿using KeePassLib.Serialization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,96 +10,102 @@ namespace CGCardIntegrate
 {
     public sealed class CyberGateWebRequest : WebRequest
     {
-        private Uri m_uri;
+        private readonly Uri _mUri;
+        private readonly string _cardDbFileNameTemp = "/data/passwordvault/keepass_temp.kdbx";
+        private readonly string _cardDbFileName = "/data/passwordvault/keepass.kdbx";
+        private string _cardFileName = string.Empty;
+        private WebResponse _mWr = null;
+        private readonly object _mObjSync = new object();
+        private bool _mBReady;
+        private Exception _mEx;
+        private string _mStrMethod = string.Empty;
+        private WebHeaderCollection _mWhcHeaders = new WebHeaderCollection();
+        private long _mLContentLength = 0;
+        private string _mStrContentType = string.Empty;
+        private ICredentials _mCred = null;
+        private bool _mBPreAuth = true;
+        private IWebProxy _mPrx = null;
+        private readonly List<byte> _mLRequestData = new List<byte>();
+
         public override Uri RequestUri
         {
-            get { return m_uri; }
+            get { return _mUri; }
         }
 
-        private string m_strMethod = string.Empty;
         public override string Method
         {
-            get { return m_strMethod; }
+            get { return _mStrMethod; }
             set
             {
                 if (value == null) throw new ArgumentNullException("value");
-                m_strMethod = value;
+                _mStrMethod = value;
             }
         }
 
-        private WebHeaderCollection m_whcHeaders = new WebHeaderCollection();
         public override WebHeaderCollection Headers
         {
-            get { return m_whcHeaders; }
+            get { return _mWhcHeaders; }
             set
             {
                 if (value == null) throw new ArgumentNullException("value");
-                m_whcHeaders = value;
+                _mWhcHeaders = value;
             }
         }
 
-        private long m_lContentLength = 0;
         public override long ContentLength
         {
-            get { return m_lContentLength; }
+            get { return _mLContentLength; }
             set
             {
                 if (value < 0) throw new ArgumentOutOfRangeException("value");
-                m_lContentLength = value;
+                _mLContentLength = value;
             }
         }
 
-        private string m_strContentType = string.Empty;
         public override string ContentType
         {
-            get { return m_strContentType; }
+            get { return _mStrContentType; }
             set
             {
                 if (value == null) throw new ArgumentNullException("value");
-                m_strContentType = value;
+                _mStrContentType = value;
             }
         }
 
-        private ICredentials m_cred = null;
         public override ICredentials Credentials
         {
-            get { return m_cred; }
-            set { m_cred = value; }
+            get { return _mCred; }
+            set { _mCred = value; }
         }
 
-        private bool m_bPreAuth = true;
         public override bool PreAuthenticate
         {
-            get { return m_bPreAuth; }
-            set { m_bPreAuth = value; }
+            get { return _mBPreAuth; }
+            set { _mBPreAuth = value; }
         }
 
-        private IWebProxy m_prx = null;
         public override IWebProxy Proxy
         {
-            get { return m_prx; }
-            set { m_prx = value; }
+            get { return _mPrx; }
+            set { _mPrx = value; }
         }
 
         public CyberGateWebRequest(Uri uri)
         {
-            m_uri = uri;
+            _mUri = uri;
         }
 
-        private List<byte> m_lRequestData = new List<byte>();
         public override Stream GetRequestStream()
         {
-            m_lRequestData.Clear();
-            return new CopyMemoryStream(m_lRequestData);
+            _mLRequestData.Clear();
+            return new CopyMemoryStream(_mLRequestData);
         }
-
-        private WebResponse m_wr = null;
 
         public override WebResponse GetResponse()
         {
-            if (m_wr != null) return m_wr;
-            
-            var isTemp = m_uri.Authority.EndsWith(".tmp");
+            if (_mWr != null) return _mWr;
+
+            var isTemp = _mUri.Authority.EndsWith(".tmp");
             StatusStateInfo st = null;
 
             try
@@ -109,49 +114,34 @@ namespace CGCardIntegrate
                 {
                     if (Method == IOConnection.WrmDeleteFile)
                     {
-                        if (File.Exists("C://projects//temp//newdatabase1.kdbx"))
-                        {
-                            File.Delete("C://projects//temp//newdatabase1.kdbx");
-                            var t = File.Create("C://projects//temp//newdatabase1.kdbx");
-                            t.Close();
-                        }
-                        m_wr = new CyberGateWebResponse(true);
+                        _cardFileName = _cardDbFileNameTemp;
+                        ProcessRequest(ref st, new WaitCallback(RemoveResponse), "Removing temp file...");
                     }
                     else if (Method == IOConnection.WrmMoveFile)
                     {
-                        m_wr = new CyberGateWebResponse(true);
+                        ProcessRequest(ref st, new WaitCallback(MoveResponse), "Replacing temp file...");
                     }
-                    else if (m_lRequestData.Count > 0)
+                    else if (_mLRequestData.Count > 0)
                     {
-                        st = StatusUtil.Begin("Uploading file...");
-                        object objState = new object();
-                        //CreateUploadResponse(objState);
-                        ThreadPool.QueueUserWorkItem(new WaitCallback(
-                            CreateUploadResponse));
-
-                        bool bReady = false;
-                        while (!bReady)
-                        {
-                            lock (m_objDownloadSync) { bReady = m_bUploadResponseReady; }
-
-                            Thread.Sleep(100);
-                            Application.DoEvents();
-                        }
-                        m_wr = m_wswrUpload;
-                        if (m_exUpload != null) throw m_exUpload;
+                        ProcessRequest(ref st, new WaitCallback(CreateUploadResponse), "Uploading temp file...");
                     }
                     else
                     {
-                        st = StatusUtil.Begin("Downloading file...");
-                        m_wr = new CyberGateWebResponse(false);
+                        _cardFileName = _cardDbFileNameTemp;
+                        ProcessRequest(ref st, new WaitCallback(DownloadResponse), "Downloading temp file...");
                     }
                 }
                 else
                 {
-                    if (Method != IOConnection.WrmDeleteFile && Method != IOConnection.WrmMoveFile && m_lRequestData.Count == 0)
+                    if (Method == IOConnection.WrmDeleteFile)
                     {
-                        st = StatusUtil.Begin("Downloading file...");
-                        m_wr = new CyberGateWebResponse(false);
+                        _cardFileName = _cardDbFileName;
+                        ProcessRequest(ref st, new WaitCallback(RemoveResponse), "Removing old file...");
+                    }
+                    else if (Method != IOConnection.WrmDeleteFile && Method != IOConnection.WrmMoveFile && _mLRequestData.Count == 0)
+                    {
+                        _cardFileName = _cardDbFileName;
+                        ProcessRequest(ref st, new WaitCallback(DownloadResponse), "Downloading file...");
                     }
                 }
             }
@@ -159,37 +149,115 @@ namespace CGCardIntegrate
             {
                 if (st != null) StatusUtil.End(st);
             }
-            return m_wr;
+            return _mWr;
         }
 
-        private object m_objDownloadSync = new object();
-        private bool m_bUploadResponseReady = false;
-        private CyberGateWebResponse m_wswrUpload = null;
-        private Exception m_exUpload = null;
+        private void ProcessRequest(ref StatusStateInfo st, WaitCallback a, string message)
+        {
+            st = StatusUtil.Begin(message);
+            ThreadPool.QueueUserWorkItem(new WaitCallback(
+                a));
+
+            bool bReady = false;
+            while (!bReady)
+            {
+                lock (_mObjSync) { bReady = _mBReady; }
+
+                Thread.Sleep(100);
+                Application.DoEvents();
+            }
+
+            if (_mEx != null) throw _mEx;
+        }
+
+        #region Upload file
         private void CreateUploadResponse(object objState)
         {
             CyberGateWebResponse wr = null;
 
             try
             {
-                using (var card = new Card(Constants.Password))
-                {
-                    using (var response = card.FreeMemory())
-                    {
-                        StatusUtil.Begin(response.ReadDataFile());
-                    }
-                }
-                //todo upload data
-                File.WriteAllBytes("C://projects//temp//newdatabase1.kdbx", m_lRequestData.ToArray());
-                wr = new CyberGateWebResponse(true);
+                var createPathResponce = CGCardIntegrateExt.Card.CreatePath("passwordvault");
+                var response = CGCardIntegrateExt.Card.Put(_cardDbFileNameTemp, _mLRequestData.ToArray());
+                if (response.Status != 213) throw new Exception("File was not uploaded.");
+                wr = new CyberGateWebResponse();
             }
-            catch (Exception exUpload) { m_exUpload = exUpload; }
+            catch (Exception exUpload) { _mEx = exUpload; }
 
-            lock (m_objDownloadSync)
+            lock (_mObjSync)
             {
-                m_wswrUpload = wr;
-                m_bUploadResponseReady = true;
+                _mWr = wr;
+                _mBReady = true;
             }
         }
+        #endregion
+
+        #region Move file
+        private void MoveResponse(object objState)
+        {
+            CyberGateWebResponse wr = null;
+
+            try
+            {
+                var response = CGCardIntegrateExt.Card.Rename(_cardDbFileNameTemp, _cardDbFileName);
+                wr = new CyberGateWebResponse();
+            }
+            catch (Exception exMove) { _mEx = exMove; }
+
+            lock (_mObjSync)
+            {
+                _mWr = wr;
+                _mBReady = true;
+            }
+        }
+        #endregion
+
+        #region Download file
+        private void DownloadResponse(object objState)
+        {
+            CyberGateWebResponse wr = null;
+
+            try
+            {
+                var response = CGCardIntegrateExt.Card.Get(_cardFileName);
+                if (response.DataFile == null)
+                {
+                    wr = new CyberGateWebResponse();
+                }
+                else
+                {
+                    response.DataFile.Position = 0;
+                    wr = new CyberGateWebResponse(response.DataFile);
+                }
+            }
+            catch (Exception exDownload) { _mEx = exDownload; }
+
+            lock (_mObjSync)
+            {
+                _mWr = wr;
+                _mBReady = true;
+            }
+        }
+        #endregion
+
+        #region Remove file
+        private void RemoveResponse(object objState)
+        {
+            CyberGateWebResponse wr = null;
+
+            try
+            {
+                var response = CGCardIntegrateExt.Card.Delete(_cardFileName);
+                wr = new CyberGateWebResponse();
+            }
+            catch (Exception exRemove) { _mEx = exRemove; }
+
+            lock (_mObjSync)
+            {
+                _mWr = wr;
+                _mBReady = true;
+            }
+        }
+        #endregion
     }
 }

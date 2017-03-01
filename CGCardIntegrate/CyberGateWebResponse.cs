@@ -31,20 +31,18 @@ namespace CGCardIntegrate
             get { return null; }
         }
 
-        public CyberGateWebResponse(bool isEmptyResponce)
+        public CyberGateWebResponse()
         {
-            if (isEmptyResponce)
-            {
-                m_sResponse = new MemoryStream();
-            }
-            GetResponseStream();
+            m_sResponse = new MemoryStream();
+        }
+
+        public CyberGateWebResponse(Stream stream)
+        {
+            m_sResponse = stream;
         }
 
         public override Stream GetResponseStream()
         {
-            if (m_sResponse != null) return m_sResponse;
-
-            m_sResponse = new CyberGateJitStream();
             return m_sResponse;
         }
 

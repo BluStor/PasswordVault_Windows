@@ -30,6 +30,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="InTheHand.Net.Personal, Version=3.5.605.0, Culture=neutral, PublicKeyToken=ea38caa273134499, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\32feet.NET.3.5.0.0\lib\net\InTheHand.Net.Personal.dll</HintPath>
+    </Reference>
     <Reference Include="KeePass">
       <HintPath>..\..\KeePass-2.35\KeePass.exe</HintPath>
     </Reference>
@@ -38,7 +42,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CGCardIntegrateExt.cs" />
-    <Compile Include="CyberGateJitStream.cs" />
     <Compile Include="StatusUtil.cs" />
     <Compile Include="CopyMemoryStream.cs" />
     <Compile Include="CyberGateWebRequest.cs" />
