@@ -326,7 +326,7 @@ namespace GateKeeperSDK
             _isActive = true;
             try
             {
-                FileStream dataFile = CreateDataFile();
+                MemoryStream dataFile = new MemoryStream();
                 SendCommand(method, cardPath, arguments, needsTransform);
                 Response commandResponse = GetCommandResponse();
                 if (commandResponse.Status != 150)
@@ -346,16 +346,6 @@ namespace GateKeeperSDK
             {
                 _isActive = false;
             }
-        }
-
-        /// <summary>
-        /// Creates unique file in temp directory
-        /// </summary>
-        /// <returns>File stream</returns>
-        private FileStream CreateDataFile()
-        {
-            var tempPath = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString();
-            return new FileStream(tempPath, FileMode.Create, FileAccess.ReadWrite);
         }
 
         /// <summary>
