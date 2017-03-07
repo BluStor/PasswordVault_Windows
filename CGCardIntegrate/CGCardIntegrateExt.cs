@@ -1,7 +1,12 @@
 ﻿using System;
+using System.Linq;
+using System.Threading;
+using System.Windows.Forms;
 using GateKeeperSDK;
 using InTheHand.Net.Bluetooth;
+using KeePass.Ecas;
 using KeePass.Plugins;
+using KeePassLib;
 
 namespace CGCardIntegrate
 {
@@ -9,12 +14,19 @@ namespace CGCardIntegrate
     {
         private static IPluginHost _host = null;
         private static Card _card;
-        internal static IPluginHost Host { get { return _host; } }
+        private static StatusStateInfo _statusState;
 
+        internal static IPluginHost Host => _host;
         public static Card Card
         {
             get { return _card; }
             set { _card = value; }
+        }
+
+        public static StatusStateInfo StatusState
+        {
+            get { return _statusState; }
+            set { _statusState = value; }
         }
 
         public override bool Initialize(IPluginHost host)

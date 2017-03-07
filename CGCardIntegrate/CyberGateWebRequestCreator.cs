@@ -2,12 +2,12 @@
 using System.Net;
 using GateKeeperSDK;
 using InTheHand.Net.Bluetooth;
+using KeePassLib;
 
 namespace CGCardIntegrate
 {
     public class CyberGateWebRequestCreator : IWebRequestCreate
-    {
-
+    { 
         public void Register()
         {
             WebRequest.RegisterPrefix("cybergate", this);
@@ -16,16 +16,16 @@ namespace CGCardIntegrate
         public WebRequest Create(Uri uri)
         {
             if (BluetoothRadio.PrimaryRadio == null) throw new Exception("Local bluetooth device is disconnected");
-            if(CGCardIntegrateExt.Card == null) CGCardIntegrateExt.Card = new Card(Constants.Password, null, BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), false);
             var cardName = uri.Host.Replace(".tmp", "");
-            if (CGCardIntegrateExt.Card.BluetoothName != null && !CGCardIntegrateExt.Card.BluetoothName.ToLower().Equals(cardName.ToLower()))
+
+            if (CGCardIntegrateExt.Card == null || 
+                (CGCardIntegrateExt.Card.BluetoothName != null && !CGCardIntegrateExt.Card.BluetoothName.ToLower().Equals(cardName.ToLower())))
             {
-                CGCardIntegrateExt.Card = new Card(Constants.Password, cardName, CGCardIntegrateExt.Card.Mac, true);
+                CGCardIntegrateExt.StatusState = StatusUtil.Begin("Connecting to the card.");
+                CGCardIntegrateExt.Card = new Card(Constants.Password, cardName, BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), true);
+                StatusUtil.End(CGCardIntegrateExt.StatusState);
             }
-            else
-            {
-                CGCardIntegrateExt.Card.BuildConnection();
-            }
+
             return new CyberGateWebRequest(uri);
         }
     }

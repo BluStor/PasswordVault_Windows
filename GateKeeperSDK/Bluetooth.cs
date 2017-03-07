@@ -49,6 +49,7 @@ namespace GateKeeperSDK
         public Bluetooth(string mac, string devicePassword, string deviceName) : this(mac, devicePassword, false)
         {
             _deviceList = _allDeviceList.Where(x => x.DeviceName.ToLower() == deviceName.ToLower()).ToList();
+            if(_deviceList.Count == 0) _deviceList = _allDeviceList.Where(x => x.ClassOfDevice.ToString() == DeviceClass).ToList();
             CheckDeviceList();
         }
 

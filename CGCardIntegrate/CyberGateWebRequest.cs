@@ -5,14 +5,15 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Windows.Forms;
+using KeePassLib;
 
 namespace CGCardIntegrate
 {
     public sealed class CyberGateWebRequest : WebRequest
     {
         private readonly Uri _mUri;
-        private readonly string _cardDbFileNameTemp = "/data/passwordvault/keepass_temp.kdbx";
-        private readonly string _cardDbFileName = "/data/passwordvault/keepass.kdbx";
+        private readonly string _cardDbFileNameTemp = "/passwordvault/keepass_temp.kdbx";
+        private readonly string _cardDbFileName = "/passwordvault/keepass.kdbx";
         private string _cardFileName = string.Empty;
         private WebResponse _mWr = null;
         private readonly object _mObjSync = new object();
@@ -106,7 +107,14 @@ namespace CGCardIntegrate
             if (_mWr != null) return _mWr;
 
             var isTemp = _mUri.Authority.EndsWith(".tmp");
-            StatusStateInfo st = null;
+            bool connectedInternal = false, closeProgress = false;
+            if (!CGCardIntegrateExt.Card.IsAvailableSerial)
+            {
+                CGCardIntegrateExt.Card.Connect();
+                connectedInternal = true;
+            }
+
+            var h = CGCardIntegrateExt.Host.Database.IOConnectionInfo.IsLocalFile();
 
             try
             {
@@ -115,20 +123,20 @@ namespace CGCardIntegrate
                     if (Method == IOConnection.WrmDeleteFile)
                     {
                         _cardFileName = _cardDbFileNameTemp;
-                        ProcessRequest(ref st, new WaitCallback(RemoveResponse), "Removing temp file...");
+                        ProcessRequest(new WaitCallback(RemoveResponse), "Saving database to the card...");
                     }
                     else if (Method == IOConnection.WrmMoveFile)
                     {
-                        ProcessRequest(ref st, new WaitCallback(MoveResponse), "Replacing temp file...");
+                        ProcessRequest(new WaitCallback(MoveResponse), "Replacing temp file...");
                     }
                     else if (_mLRequestData.Count > 0)
                     {
-                        ProcessRequest(ref st, new WaitCallback(CreateUploadResponse), "Uploading temp file...");
+                        ProcessRequest(new WaitCallback(CreateUploadResponse), "Uploading temp file...");
                     }
                     else
                     {
                         _cardFileName = _cardDbFileNameTemp;
-                        ProcessRequest(ref st, new WaitCallback(DownloadResponse), "Downloading temp file...");
+                        ProcessRequest(new WaitCallback(DownloadResponse), "Downloading temp file...");
                     }
                 }
                 else
@@ -136,25 +144,30 @@ namespace CGCardIntegrate
                     if (Method == IOConnection.WrmDeleteFile)
                     {
                         _cardFileName = _cardDbFileName;
-                        ProcessRequest(ref st, new WaitCallback(RemoveResponse), "Removing old file...");
+                        ProcessRequest(new WaitCallback(RemoveResponse), "Removing old file...");
                     }
                     else if (Method != IOConnection.WrmDeleteFile && Method != IOConnection.WrmMoveFile && _mLRequestData.Count == 0)
                     {
                         _cardFileName = _cardDbFileName;
-                        ProcessRequest(ref st, new WaitCallback(DownloadResponse), "Downloading file...");
+                        ProcessRequest(new WaitCallback(DownloadResponse), "Downloading file...");
+                        closeProgress = true;
                     }
                 }
             }
             finally
             {
-                if (st != null) StatusUtil.End(st);
+                CGCardIntegrateExt.Card.Disconnect();
+                if (closeProgress)
+                {
+                    StatusUtil.End(CGCardIntegrateExt.StatusState);
+                }
             }
             return _mWr;
         }
 
-        private void ProcessRequest(ref StatusStateInfo st, WaitCallback a, string message)
+        private void ProcessRequest(WaitCallback a, string message)
         {
-            st = StatusUtil.Begin(message);
+            if(CGCardIntegrateExt.StatusState == null ) CGCardIntegrateExt.StatusState = StatusUtil.Begin(message);
             ThreadPool.QueueUserWorkItem(new WaitCallback(
                 a));
 
@@ -177,7 +190,6 @@ namespace CGCardIntegrate
 
             try
             {
-                var createPathResponce = CGCardIntegrateExt.Card.CreatePath("passwordvault");
                 var response = CGCardIntegrateExt.Card.Put(_cardDbFileNameTemp, _mLRequestData.ToArray());
                 if (response.Status != 213) throw new Exception("File was not uploaded.");
                 wr = new CyberGateWebResponse();

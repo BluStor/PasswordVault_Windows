@@ -195,7 +195,7 @@ namespace GateKeeperSDK
         /// <summary>
         /// Establishes connection between local bluetooth device and card
         /// </summary>
-        public void Connect()
+        public bool Connect()
         {
             try
             {
@@ -208,27 +208,14 @@ namespace GateKeeperSDK
                     }
                     sp = _bluetooth.GetBluetoothSerialPort();
                     _bluetooth.Client.Close();
-                    if (_bluetooth.Client.Connected)
-                    {
-                        return;
-                    }
+                    if (_bluetooth.Client.Connected) return true;
+                    _serialPort?.Close();
                     _serialPort = new SerialPort(sp);
                     SetSerialPortParameters(_serialPort);
                     _serialPort.Open();
                     _mMultiplexer = new GkMultiplexer(_serialPort);
-                }
-            }
-            catch (UnauthorizedAccessException e)
-            {
-                _bluetooth.RemoveDevice();
-                try
-                {
-                    _bluetooth.CheckDeviceList();
-                    Connect();
-                }
-                catch (NullReferenceException ex)
-                {
-                    throw new Exception(ex.Message, e);
+
+                    return true;
                 }
             }
             catch (IOException e)
@@ -236,6 +223,12 @@ namespace GateKeeperSDK
                 _mMultiplexer = null;
                 throw e;
             }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return false;
         }
 
         /// <summary>
