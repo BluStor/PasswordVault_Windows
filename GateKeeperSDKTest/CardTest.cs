@@ -65,7 +65,17 @@ namespace ConsoleTest
                         return Card.CreatePath(inputArray[1]);
                     case "deletepath":
                         return Card.DeletePath(inputArray[1]);
-                    default: 
+                    case "disconnect":
+                        {
+                            Card.Disconnect();
+                            return "Card disconnected";
+                        }
+                    case "connect":
+                        {
+                            Card.BuildConnection();
+                            return "Connection established";
+                        }
+                    default:
                         throw new Exception("There are no such method. \nType 'help' to see all commands.");
                 }
             }
@@ -80,6 +90,12 @@ namespace ConsoleTest
         {
             return
                 @"
+    Connect: Connects to the card
+    Example: Connect
+
+    Disconnect: Disconnects the card
+    Example: Disconnect    
+
     List: Files and Directories
     Example: List /data
 

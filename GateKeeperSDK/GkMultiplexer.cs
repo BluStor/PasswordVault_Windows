@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
+using System.Net.Sockets;
 using System.Threading;
 
 namespace GateKeeperSDK
@@ -21,13 +22,13 @@ namespace GateKeeperSDK
 
         private long _currentDataTransferFileSize = 0;
 
-        private readonly SerialPort _serialPort;
+        private readonly NetworkStream _serialPort;
 
         /// <summary>
         /// Initialize new instance of multiplexer class
         /// </summary>
         /// <param name="serialPort">Serial port to use</param>
-        public GkMultiplexer(SerialPort serialPort)
+        public GkMultiplexer(NetworkStream serialPort)
         {
             _serialPort = serialPort;
         }
@@ -83,6 +84,10 @@ namespace GateKeeperSDK
                     }
                     Thread.Sleep(UploadDelayMillis);
                 } while (bytesRead != 0);
+            }
+            catch (IOException ex)
+            {
+                throw ex;
             }
             finally
             {

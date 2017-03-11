@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.IO.Ports;
+using System.Net.Sockets;
 using System.Text;
 
 namespace GateKeeperSDK
@@ -14,12 +15,12 @@ namespace GateKeeperSDK
         private readonly string _defaultPath = "/apps/vault/data";
         private Bluetooth _bluetooth;
         private GkMultiplexer _mMultiplexer;
-        private SerialPort _serialPort;
+        private NetworkStream _serialPort;
         private bool _isActive;
 
         public string BluetoothName => _bluetooth?.Device?.DeviceName;
         public string Mac => _mac;
-        public bool IsAvailableSerial => _serialPort != null && _serialPort.IsOpen;
+        public bool IsAvailableSerial => _serialPort != null;
 
 
         /// <summary>
@@ -178,7 +179,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 Disconnect();
-                throw e;
+                throw new Exception("Can not connect to the card", e);
             }
             finally
             {
@@ -195,7 +196,7 @@ namespace GateKeeperSDK
         /// <summary>
         /// Establishes connection between local bluetooth device and card
         /// </summary>
-        public bool Connect()
+        private bool Connect()
         {
             try
             {
@@ -206,16 +207,9 @@ namespace GateKeeperSDK
                     {
                         _bluetooth.ClientConnect();
                     }
-                    sp = _bluetooth.GetBluetoothSerialPort();
-                    _bluetooth.Client.Close();
-                    if (_bluetooth.Client.Connected) return true;
-                    _serialPort?.Close();
-                    _serialPort = new SerialPort(sp);
-                    SetSerialPortParameters(_serialPort);
-                    _serialPort.Open();
+                    _serialPort = _bluetooth.Client.GetStream();
                     _mMultiplexer = new GkMultiplexer(_serialPort);
-
-                    return true;
+                    if (_bluetooth.Client.Connected) return true;
                 }
             }
             catch (IOException e)
@@ -249,11 +243,14 @@ namespace GateKeeperSDK
             }
             if (_bluetooth != null && _bluetooth.Client != null && _bluetooth.Client.Connected)
             {
-                _bluetooth.Client.Close();
+                _bluetooth.Dispose();
+                _bluetooth = null;
             }
-            if (_serialPort != null && _serialPort.IsOpen)
+            if (_serialPort != null)
             {
                 _serialPort.Close();
+                _serialPort.Dispose();
+                _serialPort = null;
             }
         }
 
@@ -261,9 +258,7 @@ namespace GateKeeperSDK
         public void Dispose()
         {
             _bluetooth.Client.Close();
-            _bluetooth.Dispose();
             _serialPort.Close();
-            _serialPort.Dispose();
         }
 
         /// <summary>
@@ -286,7 +281,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 Disconnect();
-                throw e;
+                throw new Exception("Can not connect to the card", e);
             }
             finally
             {
@@ -333,7 +328,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 Disconnect();
-                throw e;
+                throw new Exception("Can not connect to the card", e);
             }
             finally
             {

@@ -11,7 +11,7 @@ namespace GateKeeperSDKTest
         {
             Response res;
             var time = DateTime.Now;
-            using (Card card = new Card(Constants.Password, null, BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), true))
+            using (Card card = new Card(Constants.Password, "CYBERGATE", BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), true))
             {
                 Console.WriteLine($"Card connection: {(DateTime.Now - time).TotalSeconds} sec");
                 var cardTest = new CardTest(card);

@@ -110,7 +110,7 @@ namespace CGCardIntegrate
             bool connectedInternal = false, closeProgress = false;
             if (!CGCardIntegrateExt.Card.IsAvailableSerial)
             {
-                CGCardIntegrateExt.Card.Connect();
+                CGCardIntegrateExt.Card.BuildConnection();
                 connectedInternal = true;
             }
 

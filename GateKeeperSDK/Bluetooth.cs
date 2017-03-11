@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Management;
+using System.Net.Mime;
 
 namespace GateKeeperSDK
 {
@@ -16,7 +17,11 @@ namespace GateKeeperSDK
         private readonly BluetoothClient _localClient;
         private readonly List<BluetoothDeviceInfo> _deviceList;
         private readonly List<BluetoothDeviceInfo> _allDeviceList;
+
+        [Obsolete]
         private readonly string _devicePassword;
+        private bool _ready = false;
+        private object _syncObject = new object();
 
         public BluetoothDeviceInfo Device { get; set; }
         public BluetoothClient Client => _localClient;
@@ -32,11 +37,11 @@ namespace GateKeeperSDK
             _localEndpoint = new BluetoothEndPoint(BluetoothAddress.Parse(mac), BluetoothService.SerialPort);
             _localClient = new BluetoothClient(_localEndpoint);
             _localClient.InquiryLength = TimeSpan.FromMilliseconds(DeviceSearchTimeMilliseconds);
-            _allDeviceList = _localClient.DiscoverDevices().ToList();
+            _allDeviceList = _localClient.DiscoverDevices(255, false, true, false, false).ToList();
             if (searchOnDeviceClass)
             {
                 _deviceList = _allDeviceList.Where(x => x.ClassOfDevice.ToString() == DeviceClass).ToList();
-                CheckDeviceList();
+                CheckAndSetDeviceList();
             }
         }
 
@@ -49,16 +54,17 @@ namespace GateKeeperSDK
         public Bluetooth(string mac, string devicePassword, string deviceName) : this(mac, devicePassword, false)
         {
             _deviceList = _allDeviceList.Where(x => x.DeviceName.ToLower() == deviceName.ToLower()).ToList();
-            if(_deviceList.Count == 0) _deviceList = _allDeviceList.Where(x => x.ClassOfDevice.ToString() == DeviceClass).ToList();
-            CheckDeviceList();
+            //if(_deviceList.Count == 0) _deviceList = _allDeviceList.Where(x => x.ClassOfDevice.ToString() == DeviceClass).ToList();
+            CheckAndSetDeviceList();
         }
 
         /// <summary>
         /// Checks if device search failed
         /// </summary>
-        public void CheckDeviceList()
+        private void CheckAndSetDeviceList()
         {
             if (_deviceList == null || _deviceList.Count == 0) throw new NullReferenceException("Device search failed");
+            Device = _deviceList.First();
         }
 
         /// <summary>
@@ -104,17 +110,9 @@ namespace GateKeeperSDK
                 // set pin of device to connect with
                 _localClient.SetPin(pass);
                 // async connection method
-                try
-                {
-                    _localClient.BeginConnect(device.DeviceAddress, BluetoothService.SerialPort,
-                        new AsyncCallback(Connect), device);
-                }
-                catch (Exception)
-                {
-                    continue;
-                }
 
                 Device = device;
+                Connect();
             }
         }
 
@@ -154,13 +152,8 @@ namespace GateKeeperSDK
         /// </summary>
         public void ClientConnect()
         {
-            Pair(_devicePassword);
+            Connect();
             EnableSerialPort();
-        }
-
-        public void RemoveDevice()
-        {
-            _deviceList.Remove(Device);
         }
 
         public void Dispose()
@@ -168,11 +161,31 @@ namespace GateKeeperSDK
             _localClient.Close();
         }
 
-        private void Connect(IAsyncResult result)
+        private void Connected(IAsyncResult result)
         {
             if (result.IsCompleted)
             {
                 // client is connected now
+                lock (_syncObject) _ready = true;
+            }
+        }
+
+        private void Connect()
+        {
+            try
+            {
+                _localClient.BeginConnect(Device.DeviceAddress, BluetoothService.SerialPort,
+                    new AsyncCallback(Connected), Device);
+
+                bool ready = false;
+                while (!ready)
+                {
+                    lock (_syncObject) ready = _ready;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
             }
         }
     }

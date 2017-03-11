@@ -1,4 +1,6 @@
-﻿using System.IO.Ports;
+﻿using System.IO;
+using System.IO.Ports;
+using System.Net.Sockets;
 
 namespace GateKeeperSDK
 {
@@ -35,7 +37,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="inputStream">Serial port to read</param>
             /// <returns>DataPacket of the serial port response</returns>
-            public static DataPacket Build(SerialPort inputStream)
+            public static DataPacket Build(NetworkStream inputStream)
             {
                 byte[] header = ReadHeader(inputStream);
                 int packetSize = GetPacketSize(header);
@@ -102,7 +104,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="inputStream">Serial port to read</param>
             /// <returns>Header from serial port</returns>
-            internal static byte[] ReadHeader(SerialPort inputStream)
+            internal static byte[] ReadHeader(NetworkStream inputStream)
             {
                 return FillByteArrayFromStream(inputStream, DataPacket.HeaderSize);
             }
@@ -113,7 +115,7 @@ namespace GateKeeperSDK
             /// <param name="inputStream">Serial port to read</param>
             /// <param name="packetSize">Size of the packet</param>
             /// <returns>Byte array with data</returns>
-            internal static byte[] ReadPayload(SerialPort inputStream, int packetSize)
+            internal static byte[] ReadPayload(NetworkStream inputStream, int packetSize)
             {
                 int payloadsize = packetSize - (DataPacket.HeaderSize + DataPacket.ChecksumSize);
                 return FillByteArrayFromStream(inputStream, payloadsize);
@@ -124,7 +126,7 @@ namespace GateKeeperSDK
             /// </summary>
             /// <param name="inputStream">Serial port to read</param>
             /// <returns>Checksum array</returns>
-            internal static byte[] ReadChecksum(SerialPort inputStream)
+            internal static byte[] ReadChecksum(NetworkStream inputStream)
             {
                 return FillByteArrayFromStream(inputStream, DataPacket.ChecksumSize);
             }
@@ -135,7 +137,7 @@ namespace GateKeeperSDK
             /// <param name="inputStream">Serial port to read</param>
             /// <param name="length">Byte array length</param>
             /// <returns>Byte array for response</returns>
-            internal static byte[] FillByteArrayFromStream(SerialPort inputStream, int length)
+            internal static byte[] FillByteArrayFromStream(NetworkStream inputStream, int length)
             {
                 byte[] data = new byte[length];
                 int totalBytesRead = 0;
@@ -143,9 +145,13 @@ namespace GateKeeperSDK
                 while (totalBytesRead < length && bytesRead != -1)
                 {
                     bytesRead = inputStream.Read(data, totalBytesRead, length - totalBytesRead);
-                    if (bytesRead != -1)
+                    if (bytesRead != 0)
                     {
                         totalBytesRead += bytesRead;
+                    }
+                    else
+                    {
+                        break;
                     }
                 }
                 return data;
