@@ -13,7 +13,7 @@ namespace CGCardIntegrate
     {
         private readonly Uri _mUri;
         private readonly string _cardDbFileNameTemp = "/passwordvault/keepass_temp.kdbx";
-        private readonly string _cardDbFileName = "/passwordvault/keepass.kdbx";
+        private readonly string _cardDbFileName = "/passwordvault/db.kdbx";
         private string _cardFileName = string.Empty;
         private WebResponse _mWr = null;
         private readonly object _mObjSync = new object();
