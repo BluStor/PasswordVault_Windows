@@ -1,5 +1,4 @@
-﻿using InTheHand.Net.Bluetooth;
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Ports;
 using System.Net.Sockets;
@@ -9,7 +8,6 @@ namespace GateKeeperSDK
 {
     public class Card : IDisposable
     {
-        private readonly string _pass;
         private readonly string _mac;
         private readonly string _cardName;
         private readonly string _defaultPath = "/apps/vault/data";
@@ -26,28 +24,28 @@ namespace GateKeeperSDK
         /// <summary>
         /// Initialize new instance of card class
         /// </summary>
-        /// <param name="pass">Card password to pair</param>
         /// <param name="cardName">Card name</param>
         /// <param name="mac">Local bluetooth device mac adress</param>
         /// <param name="establishConnection">If true, bluetooth connection will be established</param>
-        public Card(string pass, string cardName = null, string mac = null, bool establishConnection = true)
+        public Card(string cardName, string mac = null, bool establishConnection = true)
         {
-            _pass = pass;
             _mac = mac;
             _cardName = cardName;
-            if(establishConnection) BuildConnection();
+            if (establishConnection) BuildConnection();
         }
 
         /// <summary>
         /// Builds connection for bluetooth
         /// </summary>
-        public void BuildConnection()
+        public bool BuildConnection()
         {
             if (!IsAvailableSerial)
             {
-                _bluetooth = _cardName == null ? new Bluetooth(_mac, _pass) : new Bluetooth(_mac, _pass, _cardName);
-                Connect();
+                _bluetooth = new Bluetooth(_mac, _cardName);
+                return Connect();
             }
+
+            return false;
         }
 
         /// <summary>
@@ -179,7 +177,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 Disconnect();
-                throw new Exception("Can not connect to the card", e);
+                throw new Exception(CyberGateErrorMessages.CantConnect, e);
             }
             finally
             {
@@ -206,6 +204,10 @@ namespace GateKeeperSDK
                     if (!_bluetooth.Client.Connected)
                     {
                         _bluetooth.ClientConnect();
+                        if (!_bluetooth.Client.Connected)
+                        {
+                            _bluetooth.ConnectSync();
+                        }
                     }
                     _serialPort = _bluetooth.Client.GetStream();
                     _mMultiplexer = new GkMultiplexer(_serialPort);
@@ -241,14 +243,13 @@ namespace GateKeeperSDK
                     _mMultiplexer = null;
                 }
             }
-            if (_bluetooth != null && _bluetooth.Client != null && _bluetooth.Client.Connected)
+            if (_bluetooth != null && _bluetooth.Client != null)
             {
                 _bluetooth.Dispose();
                 _bluetooth = null;
             }
             if (_serialPort != null)
             {
-                _serialPort.Close();
                 _serialPort.Dispose();
                 _serialPort = null;
             }
@@ -257,8 +258,7 @@ namespace GateKeeperSDK
 
         public void Dispose()
         {
-            _bluetooth.Client.Close();
-            _serialPort.Close();
+            Disconnect();
         }
 
         /// <summary>
@@ -281,7 +281,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 Disconnect();
-                throw new Exception("Can not connect to the card", e);
+                throw new Exception(CyberGateErrorMessages.CantConnect, e);
             }
             finally
             {
@@ -328,7 +328,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 Disconnect();
-                throw new Exception("Can not connect to the card", e);
+                throw new Exception(CyberGateErrorMessages.CantConnect, e);
             }
             finally
             {
@@ -369,7 +369,7 @@ namespace GateKeeperSDK
         {
             if (_mMultiplexer == null)
             {
-                throw new Exception("Not Connected");
+                throw new Exception(CyberGateErrorMessages.NotConnectedMultiplexer);
             }
         }
 

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.IO.Ports;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -147,13 +146,7 @@ namespace GateKeeperSDK
         /// </summary>
         public virtual void Cleanup()
         {
-            try
-            {
-                _serialPort.Close();
-            }
-            catch (IOException)
-            {
-            }
+            _serialPort.Close();
         }
 
         /// <summary>

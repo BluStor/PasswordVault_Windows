@@ -123,20 +123,20 @@ namespace CGCardIntegrate
                     if (Method == IOConnection.WrmDeleteFile)
                     {
                         _cardFileName = _cardDbFileNameTemp;
-                        ProcessRequest(new WaitCallback(RemoveResponse), "Saving database to the card...");
+                        ProcessRequest(new WaitCallback(RemoveResponse), null);
                     }
                     else if (Method == IOConnection.WrmMoveFile)
                     {
-                        ProcessRequest(new WaitCallback(MoveResponse), "Replacing temp file...");
+                        ProcessRequest(new WaitCallback(MoveResponse), null);
                     }
                     else if (_mLRequestData.Count > 0)
                     {
-                        ProcessRequest(new WaitCallback(CreateUploadResponse), "Uploading temp file...");
+                        ProcessRequest(new WaitCallback(CreateUploadResponse), null);
                     }
                     else
                     {
                         _cardFileName = _cardDbFileNameTemp;
-                        ProcessRequest(new WaitCallback(DownloadResponse), "Downloading temp file...");
+                        ProcessRequest(new WaitCallback(DownloadResponse), null);
                     }
                 }
                 else
@@ -144,22 +144,32 @@ namespace CGCardIntegrate
                     if (Method == IOConnection.WrmDeleteFile)
                     {
                         _cardFileName = _cardDbFileName;
-                        ProcessRequest(new WaitCallback(RemoveResponse), "Removing old file...");
+                        ProcessRequest(new WaitCallback(RemoveResponse), null);
                     }
-                    else if (Method != IOConnection.WrmDeleteFile && Method != IOConnection.WrmMoveFile && _mLRequestData.Count == 0)
+                    else if (Method != IOConnection.WrmDeleteFile && Method != IOConnection.WrmMoveFile &&
+                             _mLRequestData.Count == 0)
                     {
                         _cardFileName = _cardDbFileName;
-                        ProcessRequest(new WaitCallback(DownloadResponse), "Downloading file...");
-                        closeProgress = true;
+                        ProcessRequest(new WaitCallback(DownloadResponse), null);
                     }
                 }
             }
-            finally
+            catch (Exception ex)
             {
                 CGCardIntegrateExt.Card.Disconnect();
-                if (closeProgress)
+                CGCardIntegrateExt.Card = null;
+                throw new Exception("Operation failed. Try again", ex);
+            }
+            finally
+            {
+                if(CGCardIntegrateExt.Card != null) CGCardIntegrateExt.Card.Disconnect();
+                if (_mEx != null)
                 {
-                    StatusUtil.End(CGCardIntegrateExt.StatusState);
+                    if (CGCardIntegrateExt.StatusState != null)
+                    {
+                        StatusUtil.End(CGCardIntegrateExt.StatusState);
+                        CGCardIntegrateExt.StatusState = null;
+                    }
                 }
             }
             return _mWr;
@@ -167,7 +177,7 @@ namespace CGCardIntegrate
 
         private void ProcessRequest(WaitCallback a, string message)
         {
-            if(CGCardIntegrateExt.StatusState == null ) CGCardIntegrateExt.StatusState = StatusUtil.Begin(message);
+            if(CGCardIntegrateExt.StatusState == null && !string.IsNullOrEmpty(message)) CGCardIntegrateExt.StatusState = StatusUtil.Begin(message);
             ThreadPool.QueueUserWorkItem(new WaitCallback(
                 a));
 
@@ -180,7 +190,10 @@ namespace CGCardIntegrate
                 Application.DoEvents();
             }
 
-            if (_mEx != null) throw _mEx;
+            if (_mEx != null)
+            {
+                throw _mEx;
+            }
         }
 
         #region Upload file
@@ -195,6 +208,7 @@ namespace CGCardIntegrate
                 wr = new CyberGateWebResponse();
             }
             catch (Exception exUpload) { _mEx = exUpload; }
+            //new InvalidOperationException("Operation failed. Try again", exUpload)
 
             lock (_mObjSync)
             {

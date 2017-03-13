@@ -2,12 +2,13 @@
 using System.Net;
 using GateKeeperSDK;
 using InTheHand.Net.Bluetooth;
+using KeePass.Ecas;
 using KeePassLib;
 
 namespace CGCardIntegrate
 {
     public class CyberGateWebRequestCreator : IWebRequestCreate
-    { 
+    {
         public void Register()
         {
             WebRequest.RegisterPrefix("cybergate", this);
@@ -15,15 +16,33 @@ namespace CGCardIntegrate
 
         public WebRequest Create(Uri uri)
         {
-            if (BluetoothRadio.PrimaryRadio == null) throw new Exception("Local bluetooth device is disconnected");
+            if (BluetoothRadio.PrimaryRadio == null) throw new Exception(CyberGateErrorMessages.BluetoothDisconnected);
             var cardName = uri.Host.Replace(".tmp", "");
 
-            if (CGCardIntegrateExt.Card == null || 
-                (CGCardIntegrateExt.Card.BluetoothName != null && !CGCardIntegrateExt.Card.BluetoothName.ToLower().Equals(cardName.ToLower())))
+            try
             {
-                CGCardIntegrateExt.StatusState = StatusUtil.Begin("Connecting to the card.");
-                CGCardIntegrateExt.Card = new Card(Constants.Password, cardName, BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), true);
-                StatusUtil.End(CGCardIntegrateExt.StatusState);
+                if (CGCardIntegrateExt.Card == null ||
+                    (CGCardIntegrateExt.Card.BluetoothName != null &&
+                     !CGCardIntegrateExt.Card.BluetoothName.ToLower().Equals(cardName.ToLower())))
+                {
+                    CGCardIntegrateExt.StatusState = StatusUtil.Begin("Connecting to the card...");
+                    CGCardIntegrateExt.Card = new Card(cardName, BluetoothRadio.PrimaryRadio.LocalAddress.ToString(),
+                        true);
+                    StatusUtil.End(CGCardIntegrateExt.StatusState);
+                    CGCardIntegrateExt.StatusState = null;
+                }
+            }
+            catch
+            {
+                if(CGCardIntegrateExt.Card != null) CGCardIntegrateExt.Card.Dispose();
+                if (CGCardIntegrateExt.StatusState != null)
+                {
+                    StatusUtil.End(CGCardIntegrateExt.StatusState);
+                    CGCardIntegrateExt.StatusState = null;
+                }
+
+                GC.Collect();
+                throw;
             }
 
             return new CyberGateWebRequest(uri);

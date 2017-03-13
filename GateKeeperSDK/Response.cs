@@ -147,6 +147,7 @@ namespace GateKeeperSDK
             catch (IOException e)
             {
                 //Log.e(Response.class.getCanonicalName(), "Error reading data file", e);
+                throw new IOException("Can't download a file", e);
             }
 
             return "";

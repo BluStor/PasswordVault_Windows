@@ -9,9 +9,8 @@ namespace GateKeeperSDKTest
     {
         static void Main(string[] args)
         {
-            Response res;
             var time = DateTime.Now;
-            using (Card card = new Card(Constants.Password, "CYBERGATE", BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), true))
+            using (Card card = new Card("CYBERGATE", BluetoothRadio.PrimaryRadio.LocalAddress.ToString(), false))
             {
                 Console.WriteLine($"Card connection: {(DateTime.Now - time).TotalSeconds} sec");
                 var cardTest = new CardTest(card);
@@ -19,37 +18,46 @@ namespace GateKeeperSDKTest
 
                 while (!exit)
                 {
-                    Console.Write("\nCommand: ");
-                    var input = Console.ReadLine();
-                    if (input == "help")
+                    try
                     {
-                        Console.WriteLine(cardTest.Help());
-                        continue;
+                        Console.Write("\nCommand: ");
+                        var input = Console.ReadLine();
+                        if (input == "help")
+                        {
+                            Console.WriteLine(cardTest.Help());
+                            continue;
+                        }
+
+                        if (input == "exit")
+                        {
+                            exit = true;
+                            continue;
+                        }
+
+                        if (string.IsNullOrEmpty(input))
+                        {
+                            Console.WriteLine("Command input is invalid");
+                            continue;
+                        }
+
+                        var inputArray = input.Split(' ');
+
+                        card.BuildConnection();
+
+                        time = DateTime.Now;
+                        var result = cardTest.ExecuteMethod(inputArray);
+                        Console.WriteLine($"Method execution: {(DateTime.Now - time).TotalSeconds} sec");
+                        if (result != null)
+                        {
+                            var response = result as Response;
+
+                            Console.WriteLine("Response:");
+                            Console.WriteLine(response?.ToString() ?? result.ToString());
+                        }
                     }
-
-                    if (input == "exit")
+                    finally
                     {
-                        exit = true;
-                        continue; 
-                    }
-
-                    if (string.IsNullOrEmpty(input))
-                    {
-                        Console.WriteLine("Command input is invalid");
-                        continue;
-                    }
-
-                    var inputArray = input.Split(' ');
-
-                    time = DateTime.Now;
-                    var result = cardTest.ExecuteMethod(inputArray);
-                    Console.WriteLine($"Method execution: {(DateTime.Now - time).TotalSeconds} sec");
-                    if (result != null)
-                    {
-                        var response = result as Response;
-
-                        Console.WriteLine("Response:");
-                        Console.WriteLine(response?.ToString() ?? result.ToString());
+                        card.Disconnect();
                     }
                 }
             }

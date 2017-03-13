@@ -70,14 +70,14 @@ namespace CGCardIntegrate
             {
                 s.Form = BeginStatusDialog(strText);
             }
-            catch (Exception) { Debug.Assert(false); }
+            catch (Exception) { }
 
             return s;
         }
 
         public static void End(StatusStateInfo s)
         {
-            if (s == null) { Debug.Assert(false); return; }
+            if (s == null) { return; }
 
             try
             {
@@ -93,7 +93,7 @@ namespace CGCardIntegrate
                     mf.MainProgressBar.Visible = s.Visible;
                 }
             }
-            catch (Exception) { Debug.Assert(false); }
+            catch (Exception) { }
         }
     }
 }
