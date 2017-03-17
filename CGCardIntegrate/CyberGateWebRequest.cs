@@ -5,6 +5,8 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Windows.Forms;
+using GateKeeperSDK;
+using InTheHand.Net.Bluetooth;
 using KeePassLib;
 
 namespace CGCardIntegrate
@@ -106,6 +108,8 @@ namespace CGCardIntegrate
         {
             if (_mWr != null) return _mWr;
 
+            if (BluetoothRadio.PrimaryRadio == null) throw new Exception(CyberGateErrorMessages.BluetoothDisconnected);
+
             var isTemp = _mUri.Authority.EndsWith(".tmp");
             bool connectedInternal = false, closeProgress = false;
             if (!CGCardIntegrateExt.Card.IsAvailableSerial)
@@ -158,7 +162,8 @@ namespace CGCardIntegrate
             {
                 CGCardIntegrateExt.Card.Disconnect();
                 CGCardIntegrateExt.Card = null;
-                throw new Exception("Operation failed. Try again", ex);
+                if (!CGCardIntegrateExt.SavingAction) throw ex;
+                else throw new Exception("Operation failed. Try again", ex);
             }
             finally
             {
@@ -246,6 +251,7 @@ namespace CGCardIntegrate
             try
             {
                 var response = CGCardIntegrateExt.Card.Get(_cardFileName);
+                if(response.Status != 226) throw new Exception("No password database exists on the card. Please create a new password database locally and then save to the card by clicking the menu \"File\" -> \"Save As\" -> \"Save to URL...\"");
                 if (response.DataFile == null)
                 {
                     wr = new CyberGateWebResponse();

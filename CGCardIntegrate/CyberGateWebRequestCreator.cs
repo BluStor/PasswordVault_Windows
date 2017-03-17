@@ -16,7 +16,6 @@ namespace CGCardIntegrate
 
         public WebRequest Create(Uri uri)
         {
-            if (BluetoothRadio.PrimaryRadio == null) throw new Exception(CyberGateErrorMessages.BluetoothDisconnected);
             var cardName = uri.Host.Replace(".tmp", "");
 
             try
