@@ -78,6 +78,17 @@ namespace GateKeeperSDK
         }
 
         /// <summary>
+        /// Sent MLST command
+        /// </summary>
+        /// <param name="cardPath">Folder path on card. For example: "pictures/animals/cats"</param>
+        /// <returns>Response from the card with status, message and data</returns>
+        public Response MLST(string cardPath)
+        {
+            cardPath = GlobularPath(cardPath);
+            return Get(Commands.MLST, "/device/factoryreset", null, false);
+        }
+
+        /// <summary>
         /// Gets value of total and free memory on the card
         /// </summary>
         /// <returns>Response from the card with status, message and data</returns>

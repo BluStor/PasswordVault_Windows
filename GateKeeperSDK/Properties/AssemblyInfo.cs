@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("GateKeeperSDK")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("by adguard")]
-[assembly: AssemblyProduct("GateKeeperSDK")]
-[assembly: AssemblyCopyright("Copyright © by adguard 2017")]
+[assembly: AssemblyCompany("BluStor PMC, Inc.")]
+[assembly: AssemblyProduct("GateKeeper SDK")]
+[assembly: AssemblyCopyright("Copyright ©2017  BluStor PMC, Inc.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

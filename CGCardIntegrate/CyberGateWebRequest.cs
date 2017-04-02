@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using GateKeeperSDK;
 using InTheHand.Net.Bluetooth;
 using KeePassLib;
+using System.Drawing;
 
 namespace CGCardIntegrate
 {
@@ -251,7 +252,10 @@ namespace CGCardIntegrate
             try
             {
                 var response = CGCardIntegrateExt.Card.Get(_cardFileName);
-                if(response.Status != 226) throw new Exception("No password database exists on the card. Please create a new password database locally and then save to the card by clicking the menu \"File\" -> \"Save As\" -> \"Save to URL...\"");
+                if (response.Status != 226)
+                {
+                    response = CreateDefaultDatabase();
+                } 
                 if (response.DataFile == null)
                 {
                     wr = new CyberGateWebResponse();
@@ -291,5 +295,94 @@ namespace CGCardIntegrate
             }
         }
         #endregion
+
+        #region CreateDefaultDatabase
+        private Response CreateDefaultDatabase()
+        {
+
+            string strPassword = "";
+            if (InputBox("New Password Vault Database", "Master Password:", ref strPassword) != DialogResult.OK)
+            {
+                throw new Exception("No password database found on card.");
+            }
+
+            // Create a null status logger
+            KeePassLib.Interfaces.NullStatusLogger status = new KeePassLib.Interfaces.NullStatusLogger();
+
+            // Create an empty password database
+            KeePassLib.Serialization.IOConnectionInfo iocInfo = new KeePassLib.Serialization.IOConnectionInfo();
+            KeePassLib.PwDatabase pwDatabase = new KeePassLib.PwDatabase();
+            KeePassLib.Keys.CompositeKey key = new KeePassLib.Keys.CompositeKey();
+            key.AddUserKey(new KeePassLib.Keys.KcpPassword(strPassword));
+            PwGroup pwGroup = new PwGroup(true, true, "Password Vault", PwIcon.FolderOpen);
+            pwDatabase.New(iocInfo, key);
+            pwDatabase.RootGroup = pwGroup;
+
+            // Serialize the database so we can write it to the card
+            KeePassLib.Serialization.KdbxFile KdbxFile = new KeePassLib.Serialization.KdbxFile(pwDatabase);           
+            KdbxFile.Save(GetRequestStream(), null, KdbxFormat.Default, status);
+
+            // Attempt to upload the database to the card
+            var response = CGCardIntegrateExt.Card.Put(_cardDbFileName, _mLRequestData.ToArray());
+            if (response.Status != 213) throw new Exception("Failed to create default database.");
+
+            // Close the database
+            pwDatabase.Close();
+
+            // Build download response for new database
+            response = CGCardIntegrateExt.Card.Get(_cardFileName);
+
+            return response;
+
+        }
+        #endregion
+
+        public static DialogResult InputBox(string title, string promptText, ref string value)
+        {
+            Form form = new Form();
+            Label label = new Label();
+            TextBox textBox = new TextBox();
+            Button buttonOk = new Button();
+            Button buttonCancel = new Button();
+
+            form.Text = title;
+            label.Text = promptText;
+            textBox.Text = value;
+
+            buttonOk.Text = "OK";
+            buttonCancel.Text = "Cancel";
+            buttonOk.DialogResult = DialogResult.OK;
+            buttonCancel.DialogResult = DialogResult.Cancel;
+
+            label.SetBounds(9, 20, 372, 13);
+            textBox.SetBounds(12, 36, 372, 20);
+            buttonOk.SetBounds(228, 72, 75, 23);
+            buttonCancel.SetBounds(309, 72, 75, 23);
+
+            label.AutoSize = true;
+            textBox.Anchor = textBox.Anchor | AnchorStyles.Right;
+            buttonOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+
+            form.ClientSize = new Size(396, 107);
+            form.Controls.AddRange(new Control[] { label, textBox, buttonOk, buttonCancel });
+            form.ClientSize = new Size(Math.Max(300, label.Right + 10), form.ClientSize.Height);
+            form.FormBorderStyle = FormBorderStyle.FixedDialog;
+            form.StartPosition = FormStartPosition.CenterScreen;
+            form.MinimizeBox = false;
+            form.MaximizeBox = false;
+            form.AcceptButton = buttonOk;
+            form.CancelButton = buttonCancel;
+
+            DialogResult dialogResult = form.ShowDialog();
+            value = textBox.Text;
+            return dialogResult;
+        }
+
+
+
+
+
     }
+
 }

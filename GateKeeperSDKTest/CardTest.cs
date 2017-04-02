@@ -24,6 +24,8 @@ namespace ConsoleTest
             {
                 switch (inputArray[0].ToLower())
                 {
+                    case "mlst":
+                        return Card.MLST(inputArray[1]);
                     case "list":
                         return Card.List(inputArray[1]);
                     case "changeworkingdirectory":
