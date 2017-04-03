@@ -9,6 +9,7 @@ using GateKeeperSDK;
 using InTheHand.Net.Bluetooth;
 using KeePassLib;
 using System.Drawing;
+using System.Diagnostics;
 
 namespace CGCardIntegrate
 {
@@ -254,6 +255,7 @@ namespace CGCardIntegrate
                 var response = CGCardIntegrateExt.Card.Get(_cardFileName);
                 if (response.Status != 226)
                 {
+                    // Database file not found, so create a default
                     response = CreateDefaultDatabase();
                 } 
                 if (response.DataFile == null)
@@ -329,6 +331,13 @@ namespace CGCardIntegrate
             // Close the database
             pwDatabase.Close();
 
+            //MemoryStream s = new MemoryStream();
+            //s.Capacity = 0x800;
+            //s.Write(_mLRequestData.ToArray(), 0, _mLRequestData.Count);
+            //Response r = new Response(0xe2, "Created New Database", s);
+            //s.Close();
+            //return r;
+
             // Build download response for new database
             response = CGCardIntegrateExt.Card.Get(_cardFileName);
 
@@ -337,6 +346,7 @@ namespace CGCardIntegrate
         }
         #endregion
 
+        #region Password InputBox
         public static DialogResult InputBox(string title, string promptText, ref string value)
         {
             Form form = new Form();
@@ -349,22 +359,28 @@ namespace CGCardIntegrate
             label.Text = promptText;
             textBox.Text = value;
 
+            textBox.UseSystemPasswordChar = true;
+
+            form.AutoSize = true;
+            form.AutoSizeMode = AutoSizeMode.GrowOnly;
+            form.TopMost = true;
+
             buttonOk.Text = "OK";
             buttonCancel.Text = "Cancel";
             buttonOk.DialogResult = DialogResult.OK;
             buttonCancel.DialogResult = DialogResult.Cancel;
 
-            label.SetBounds(9, 20, 372, 13);
-            textBox.SetBounds(12, 36, 372, 20);
-            buttonOk.SetBounds(228, 72, 75, 23);
-            buttonCancel.SetBounds(309, 72, 75, 23);
+            label.SetBounds(9, 15, 372, 13);
+            textBox.SetBounds(12, 46, 372, 20);
+            buttonOk.SetBounds(198, 82, 75, 35);
+            buttonCancel.SetBounds(289, 82, 95, 35);
 
             label.AutoSize = true;
             textBox.Anchor = textBox.Anchor | AnchorStyles.Right;
             buttonOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 
-            form.ClientSize = new Size(396, 107);
+            form.ClientSize = new Size(396, 130);
             form.Controls.AddRange(new Control[] { label, textBox, buttonOk, buttonCancel });
             form.ClientSize = new Size(Math.Max(300, label.Right + 10), form.ClientSize.Height);
             form.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -374,11 +390,14 @@ namespace CGCardIntegrate
             form.AcceptButton = buttonOk;
             form.CancelButton = buttonCancel;
 
+            //form.AutoScaleDimensions = new SizeF(1F, 1F);
+            form.AutoScaleMode = AutoScaleMode.Inherit;
+
             DialogResult dialogResult = form.ShowDialog();
             value = textBox.Text;
             return dialogResult;
         }
-
+        #endregion
 
 
 
