@@ -39,6 +39,7 @@
     <Reference Include="KeePass, Version=2.35.0.20042, Culture=neutral, PublicKeyToken=fed2ed7716aecf5c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\KeePass.exe</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
@@ -46,6 +47,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CGCardIntegrateExt.cs" />
+    <Compile Include="ConnectToCardDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConnectToCardDialog.Designer.cs">
+      <DependentUpon>ConnectToCardDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CyberGateFirmwareUpdater.cs" />
     <Compile Include="StatusUtil.cs" />
     <Compile Include="CopyMemoryStream.cs" />
     <Compile Include="CyberGateWebRequest.cs" />
@@ -65,6 +73,11 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ConnectToCardDialog.resx">
+      <DependentUpon>ConnectToCardDialog.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Fody.1.28.3\build\Fody.targets" Condition="Exists('..\packages\Fody.1.28.3\build\Fody.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -73,6 +86,10 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Fody.1.28.3\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Fody.1.28.3\build\Fody.targets'))" />
   </Target>
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

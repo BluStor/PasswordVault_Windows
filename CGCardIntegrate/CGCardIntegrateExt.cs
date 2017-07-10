@@ -12,6 +12,7 @@ namespace CGCardIntegrate
 {
     public sealed class CGCardIntegrateExt : Plugin
     {
+        private CyberGateFirmwareUpdater _firmwareUpdater = null;
         private static IPluginHost _host = null;
         private static Card _card;
         private static StatusStateInfo _statusState;
@@ -46,6 +47,11 @@ namespace CGCardIntegrate
             Host.TriggerSystem.RaisingEvent += this.OnEcasSaveEvent;
             Host.TriggerSystem.RaisingEvent += this.OnEcasSavedEvent;
             (new CyberGateWebRequestCreator()).Register();
+
+            var optionsMenu = new ToolStripMenuItem("Firmware");
+            optionsMenu.Click += OnOptions_Click;
+            _host.MainWindow.ToolsMenu.DropDownItems.Add(optionsMenu);
+            _firmwareUpdater = new CyberGateFirmwareUpdater();
             return true;
         }
 
@@ -58,6 +64,7 @@ namespace CGCardIntegrate
                 _host = null;
                 Card.Disconnect();
                 Card = null;
+                _firmwareUpdater = null;
             }
         }
         private void OnEcasSaveEvent(object sender, EcasRaisingEventArgs e)
@@ -69,6 +76,11 @@ namespace CGCardIntegrate
         {
             if (e.Event.Type.Equals(SavedDatabaseFile))
                 SavingAction = false;
+        }
+
+        void OnOptions_Click(object sender, EventArgs e)
+        {
+            _firmwareUpdater.Process();
         }
     }
 }
