@@ -135,8 +135,7 @@ namespace CGCardIntegrate
 
         public void CurrentFirmwareVersion()
         {
-            var t = Regex.Match("boot 4.5\r\nFIRM: 5.6.4 fsdf", @"(?<=FIRM: )((\d|\.)*)").Value;
-            //CheckCardConnection();
+            CheckCardConnection();
             // start uploading firmware file to card
             CGCardIntegrateExt.StatusState = StatusUtil.Begin("Getting firmware version...");
             ThreadPool.QueueUserWorkItem(new WaitCallback(
@@ -164,7 +163,7 @@ namespace CGCardIntegrate
             try
             {
                 var response = CGCardIntegrateExt.Card.Get(_mFirmwarePath);
-                if (response.Status != 213) throw new Exception("File was not downloaded.");
+                if (response.Status != 226) throw new Exception("File was not downloaded.");
                 _mVersion = response.ToString();
             }
             catch (Exception exUpload) { _mEx = exUpload; }
