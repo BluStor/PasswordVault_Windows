@@ -155,7 +155,7 @@ namespace CGCardIntegrate
             {
                 throw _mEx;
             }
-            MessageBox.Show("Current firmware version: " + Regex.Match(_mVersion, @"(?<=FIRM: )((\d|\.)*)").Value);
+            MessageBox.Show("Current firmware version: " + Regex.Match(_mVersion, @"(?<=FIRM: )(.*)").Value);
         }
         private void FirmwareResponse(object objState)
         {
