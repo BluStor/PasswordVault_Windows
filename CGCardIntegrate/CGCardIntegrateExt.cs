@@ -48,9 +48,12 @@ namespace CGCardIntegrate
             Host.TriggerSystem.RaisingEvent += this.OnEcasSavedEvent;
             (new CyberGateWebRequestCreator()).Register();
 
-            var optionsMenu = new ToolStripMenuItem("Firmware");
+            var optionsMenu = new ToolStripMenuItem("Update firmware");
             optionsMenu.Click += OnOptions_Click;
+            var optionVersionMenu = new ToolStripMenuItem("Firmware version");
+            optionVersionMenu.Click += OnOptionVersion_Click;
             _host.MainWindow.ToolsMenu.DropDownItems.Add(optionsMenu);
+            _host.MainWindow.ToolsMenu.DropDownItems.Add(optionVersionMenu);
             _firmwareUpdater = new CyberGateFirmwareUpdater();
             return true;
         }
@@ -81,6 +84,11 @@ namespace CGCardIntegrate
         void OnOptions_Click(object sender, EventArgs e)
         {
             _firmwareUpdater.Process();
+        }
+
+        private void OnOptionVersion_Click(object sender, EventArgs e)
+        {
+            _firmwareUpdater.CurrentFirmwareVersion();
         }
     }
 }
